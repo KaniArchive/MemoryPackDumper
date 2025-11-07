@@ -8,10 +8,11 @@ public class MemoryPackSchema
     public readonly List<MemoryPackEnum> Enums = [];
 }
 
-public class MemoryPackClass(string className, string typeKeyword = "class")
+public class MemoryPackClass(string className, string baseClassName, string typeKeyword = "class")
 {
     public readonly List<string> Attributes = [];
     public readonly string ClassName = className;
+    public readonly string BaseClassName = baseClassName;
     public readonly List<MemoryPackMember> Members = [];
     public readonly List<MemoryPackMethod> Methods = [];
     public readonly string TypeKeyword = typeKeyword;

@@ -10,7 +10,8 @@ public static class MemberParser
     {
         var className = typeDef.Name;
         var typeKeyword = TypeHelper.GetTypeKeyword(typeDef);
-        var memoryPackClass = new MemoryPackClass(className, typeKeyword)
+        var baseType = TypeHelper.GetBaseType(typeDef);
+        var memoryPackClass = new MemoryPackClass(className, baseType, typeKeyword)
         {
             IsRecord = IsRecordType(typeDef)
         };

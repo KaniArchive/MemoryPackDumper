@@ -145,13 +145,14 @@ public static class Parser
         where TBufferWriter : IBufferWriter<byte>
     {
         var indent = string.IsNullOrEmpty(_customNameSpace) ? "" : "    ";
+        var baseType = memoryPackClass.BaseClassName == "" ? "" : $" : {memoryPackClass.BaseClassName}";
 
         WriteMemoryPackableAttribute(ref writer, memoryPackClass, indent);
 
         foreach (var union in memoryPackClass.Unions)
             writer.AppendFormat($"{indent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
 
-        writer.AppendFormat($"{indent}public partial {memoryPackClass.TypeKeyword} {memoryPackClass.ClassName}\n");
+        writer.AppendFormat($"{indent}public partial {memoryPackClass.TypeKeyword} {memoryPackClass.ClassName}{baseType}\n");
         writer.AppendFormat($"{indent}{{\n");
 
         foreach (var member in memoryPackClass.Members) WriteMember(ref writer, member, indent);
