@@ -40,7 +40,7 @@ internal static class TypeHelper
     public static string GetBaseType(TypeDefinition typeDef)
     {
         if (typeDef.BaseType != null && typeDef.BaseType.FullName != "System.Object" && typeDef.BaseType.FullName != "System.ValueType" && typeDef.BaseType.FullName != "System.Enum")
-            return typeDef.BaseType.FullName;
+            return typeDef.BaseType.Name;
         return "";
     }
 }
