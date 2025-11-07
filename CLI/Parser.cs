@@ -189,16 +189,26 @@ public static class Parser
     {
         var indent = string.IsNullOrEmpty(_customNameSpace) ? "" : "    ";
         var baseType = memoryPackClass.BaseClassName == "" ? "" : $" : {memoryPackClass.BaseClassName}";
+        var isInterface = memoryPackClass.TypeKeyword == "interface";
 
         WriteMemoryPackableAttribute(ref writer, memoryPackClass, indent);
 
         foreach (var union in memoryPackClass.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
             writer.AppendFormat($"{indent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
 
-        writer.AppendFormat($"{indent}public partial {memoryPackClass.TypeKeyword} {memoryPackClass.ClassName}{baseType}\n");
+        var typeDeclaration = memoryPackClass.TypeKeyword switch
+        {
+            "interface" => $"{indent}public partial interface {memoryPackClass.ClassName}{baseType}\n",
+            "struct" => $"{indent}public partial struct {memoryPackClass.ClassName}{baseType}\n",
+            "abstract" => $"{indent}public abstract partial class {memoryPackClass.ClassName}{baseType}\n",
+            "static" => $"{indent}public static partial class {memoryPackClass.ClassName}{baseType}\n",
+            _ => $"{indent}public partial class {memoryPackClass.ClassName}{baseType}\n"
+        };
+        
+        writer.AppendLiteral(typeDeclaration);
         writer.AppendFormat($"{indent}{{\n");
 
-        foreach (var member in memoryPackClass.Members) WriteMember(ref writer, member, indent);
+        foreach (var member in memoryPackClass.Members) WriteMember(ref writer, member, indent, isInterface);
 
         writer.AppendFormat($"{indent}}}\n");
     }
@@ -222,7 +232,7 @@ public static class Parser
     }
 
     private static void WriteMember<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, MemoryPackMember member,
-        string indent)
+        string indent, bool isInterface = false)
         where TBufferWriter : IBufferWriter<byte>
     {
         var memberIndent = indent + "    ";
@@ -239,12 +249,13 @@ public static class Parser
         foreach (var formatter in member.CustomFormatters) writer.AppendFormat($"{memberIndent}[{formatter}]\n");
 
         var typeStr = TypeStringConverter.TypeToString(member.Type);
-        var visibility = member.IsPublic ? "public" : "private";
+        
+        var visibility = isInterface ? "" : (member.IsPublic ? "public " : "private ");
 
         if (member.IsField)
-            writer.AppendFormat($"{memberIndent}{visibility} {typeStr} {member.Name};\n");
+            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {member.Name};\n");
         else
-            writer.AppendFormat($"{memberIndent}{visibility} {typeStr} {member.Name} {{ get; set; }}\n");
+            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {member.Name} {{ get; set; }}\n");
     }
 
     private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,

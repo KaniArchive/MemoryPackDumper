@@ -30,12 +30,12 @@ internal static class TypeHelper
         if (typeDef.IsInterface)
             return "interface";
         if (typeDef is { IsAbstract: true, IsSealed: true })
-            return "static class";
+            return "static";
         if (typeDef.IsAbstract)
-            return "abstract class";
+            return "abstract";
         if (typeDef is { IsValueType: true, IsEnum: false })
             return "struct";
-        return "class";
+        return "";
     }
 
     public static string GetBaseType(TypeDefinition typeDef)
