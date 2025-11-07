@@ -47,6 +47,7 @@ public class MemoryPackMember(string name, TypeReference type, bool isField)
     public bool IsIgnored = false;
     public bool IsInclude = false;
     public bool IsInit = false;
+    public bool IsPublic = true;
     public bool IsReadOnly = false;
     public bool IsRequired = false;
     public readonly string Name = name;
