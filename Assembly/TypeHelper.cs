@@ -53,4 +53,50 @@ internal static class TypeHelper
         }
         return "";
     }
+
+    public static void CollectNamespaces(TypeReference typeRef, HashSet<string> namespaces)
+    {
+        if (typeRef is GenericInstanceType genericType)
+        {
+            var elementType = genericType.ElementType.Resolve();
+            AddNamespaceIfNeeded(elementType, namespaces);
+            
+            foreach (var arg in genericType.GenericArguments)
+                CollectNamespaces(arg, namespaces);
+        }
+        else if (typeRef is ArrayType arrayType)
+        {
+            CollectNamespaces(arrayType.ElementType, namespaces);
+        }
+        else
+        {
+            var resolved = typeRef.Resolve();
+            AddNamespaceIfNeeded(resolved, namespaces);
+        }
+    }
+
+    private static void AddNamespaceIfNeeded(TypeDefinition? typeDef, HashSet<string> namespaces)
+    {
+        if (typeDef?.Namespace == null) return;
+
+        if (typeDef.Namespace.StartsWith("System."))
+        {
+            namespaces.Add(typeDef.Namespace);
+            return;
+        }
+
+        if (typeDef.Namespace == "UnityEngine")
+        {
+            switch (typeDef.Name)
+            {
+                case "Vector2":
+                case "Vector3":
+                case "Vector4":
+                case "Quaternion":
+                case "Matrix4x4":
+                    namespaces.Add("System.Numerics");
+                    break;
+            }
+        }
+    }
 }

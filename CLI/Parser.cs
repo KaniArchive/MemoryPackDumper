@@ -147,11 +147,10 @@ public static class Parser
             "MemoryPack"
         };
 
-        foreach (var _ in schema.Classes
-                     .SelectMany(cls => cls.Members, (_, member) => TypeStringConverter.TypeToString(member.Type))
-                     .Where(typeStr =>
-                         typeStr.Contains("List<") || typeStr.Contains("Dictionary<") || typeStr.Contains("HashSet<")))
-            namespaces.Add("System.Collections.Generic");
+        foreach (var member in schema.Classes.SelectMany(cls => cls.Members))
+        {
+            TypeHelper.CollectNamespaces(member.Type, namespaces);
+        }
 
         foreach (var ns in namespaces.AsValueEnumerable().OrderBy(n => n))
         {
