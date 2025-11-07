@@ -240,8 +240,6 @@ public static class Parser
             var returnType = method.ReturnType == "Void" ? "void" : method.ReturnType;
             writer.AppendFormat($"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {method.Name}({parameters}) => default;\n");
         }
-        
-        writer.AppendLine();
     }
 
     private static void WriteMemoryPackableAttribute<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
