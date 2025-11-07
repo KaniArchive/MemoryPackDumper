@@ -36,4 +36,11 @@ internal static class TypeHelper
             return "struct";
         return "class";
     }
+
+    public static string GetBaseType(TypeDefinition typeDef)
+    {
+        if (typeDef.BaseType != null && typeDef.BaseType.FullName != "System.Object" && typeDef.BaseType.FullName != "System.ValueType" && typeDef.BaseType.FullName != "System.Enum")
+            return typeDef.BaseType.FullName;
+        return "";
+    }
 }
