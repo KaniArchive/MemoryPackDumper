@@ -201,8 +201,6 @@ public static class Parser
             writer.AppendFormat($"{memberIndent}public {typeStr} {member.Name};\n");
         else
             writer.AppendFormat($"{memberIndent}public {typeStr} {member.Name} {{ get; set; }}\n");
-
-        writer.AppendLine();
     }
 
     private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
