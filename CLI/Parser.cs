@@ -209,8 +209,39 @@ public static class Parser
         writer.AppendFormat($"{indent}{{\n");
 
         foreach (var member in memoryPackClass.Members) WriteMember(ref writer, member, indent, isInterface);
+        
+        foreach (var method in memoryPackClass.Methods) WriteMethod(ref writer, method, indent, memoryPackClass.ClassName);
 
         writer.AppendFormat($"{indent}}}\n");
+    }
+    
+    private static void WriteMethod<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
+        MemoryPackMethod method, string indent, string className)
+        where TBufferWriter : IBufferWriter<byte>
+    {
+        var memberIndent = indent + "    ";
+        
+        foreach (var attr in method.Attributes)
+            writer.AppendFormat($"{memberIndent}[{attr}]\n");
+        
+        var visibility = $"{method.Visibility} ";
+        var staticModifier = method.IsStatic ? "static " : "";
+        var overrideModifier = method.Name == "GetKeyForItem" ? "override " : "";
+        
+        var parameters = method.Parameters.AsValueEnumerable().Select(p => $"{p.Type} {p.Name}").JoinToString(", ");
+        
+        if (method.IsConstructor)
+        {
+            var constructorName = className.Contains('<') ? className[..className.IndexOf('<')] : className;
+            writer.AppendFormat($"{memberIndent}{visibility}{constructorName}({parameters}) {{ }}\n");
+        }
+        else
+        {
+            var returnType = method.ReturnType == "Void" ? "void" : method.ReturnType;
+            writer.AppendFormat($"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {method.Name}({parameters}) => default;\n");
+        }
+        
+        writer.AppendLine();
     }
 
     private static void WriteMemoryPackableAttribute<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,

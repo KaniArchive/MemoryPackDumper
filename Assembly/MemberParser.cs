@@ -138,18 +138,33 @@ public static class MemberParser
     private static MemoryPackMethod CreateMethodFromDefinition(MethodDefinition methodDef)
     {
         var returnType = methodDef.ReturnType.Name;
+        var visibility = GetMethodVisibility(methodDef);
         var method = new MemoryPackMethod(
             methodDef.Name,
             returnType,
             methodDef.IsStatic,
-            methodDef.IsPublic
+            visibility
         );
 
         AttributeExtractor.ExtractMethodAttributes(methodDef, method);
 
-        foreach (var param in methodDef.Parameters) method.Parameters.Add((param.ParameterType.Name, param.Name));
+        foreach (var param in methodDef.Parameters)
+        {
+            var paramType = TypeStringConverter.TypeToString(param.ParameterType);
+            method.Parameters.Add((paramType, param.Name));
+        }
 
         return method;
+    }
+
+    private static string GetMethodVisibility(MethodDefinition methodDef)
+    {
+        if (methodDef.IsPublic) return "public";
+        if (methodDef.IsFamily) return "protected";
+        if (methodDef.IsAssembly) return "internal";
+        if (methodDef.IsFamilyOrAssembly) return "protected internal";
+        if (methodDef.IsFamilyAndAssembly) return "private protected";
+        return "private";
     }
 
     private static MemoryPackMember CreateMemberFromProperty(PropertyDefinition property)
