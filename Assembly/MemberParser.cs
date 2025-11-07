@@ -8,7 +8,7 @@ public static class MemberParser
 {
     public static MemoryPackClass TypeToMemoryPackClass(TypeDefinition typeDef, HashSet<string> discoveredTypes)
     {
-        var className = typeDef.Name;
+        var className = GetClassName(typeDef);
         var typeKeyword = TypeHelper.GetTypeKeyword(typeDef);
         var baseType = TypeHelper.GetBaseType(typeDef);
         var memoryPackClass = new MemoryPackClass(className, baseType, typeKeyword)
@@ -24,6 +24,20 @@ public static class MemberParser
         ProcessMethods(typeDef, memoryPackClass);
 
         return memoryPackClass;
+    }
+
+    private static string GetClassName(TypeDefinition typeDef)
+    {
+        var name = typeDef.Name;
+        
+        if (!typeDef.HasGenericParameters)
+            return name;
+        
+        if (name.Contains('`'))
+            name = name[..name.IndexOf('`')];
+        
+        var genericParams = typeDef.GenericParameters.AsValueEnumerable().Select(p => p.Name).JoinToString(", ");
+        return $"{name}<{genericParams}>";
     }
 
     private static bool IsRecordType(TypeDefinition typeDef)
