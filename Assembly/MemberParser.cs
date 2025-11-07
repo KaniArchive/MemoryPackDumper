@@ -109,7 +109,12 @@ public static class MemberParser
 
     private static bool IsMemoryPackMethod(MethodDefinition method)
     {
-        return IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method);
+        return IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method) || IsOverrideMethod(method);
+    }
+
+    private static bool IsOverrideMethod(MethodDefinition method)
+    {
+        return method is { IsVirtual: true, IsNewSlot: false } && !method.IsGetter && !method.IsGetter && !method.IsSetter;
     }
 
     private static bool IsMemoryPackConstructor(MethodDefinition method)
@@ -137,7 +142,7 @@ public static class MemberParser
 
     private static MemoryPackMethod CreateMethodFromDefinition(MethodDefinition methodDef)
     {
-        var returnType = methodDef.ReturnType.Name;
+        var returnType = TypeStringConverter.TypeToString(methodDef.ReturnType);
         var visibility = GetMethodVisibility(methodDef);
         var method = new MemoryPackMethod(
             methodDef.Name,
