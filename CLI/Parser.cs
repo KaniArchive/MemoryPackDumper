@@ -149,7 +149,7 @@ public static class Parser
 
         WriteMemoryPackableAttribute(ref writer, memoryPackClass, indent);
 
-        foreach (var union in memoryPackClass.Unions)
+        foreach (var union in memoryPackClass.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
             writer.AppendFormat($"{indent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
 
         writer.AppendFormat($"{indent}public partial {memoryPackClass.TypeKeyword} {memoryPackClass.ClassName}{baseType}\n");
