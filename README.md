@@ -21,6 +21,9 @@ MemoryPackDumper.exe --dummy-dll "path/to/dummydll"
 
 # Specify output file
 MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --output-file "MemoryPack.cs"
+
+# Specify a dll to limit the search
+MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --target-dll "Game.dll" --output-file "MemoryPack.cs"
 ```
 
 ## Build
@@ -45,6 +48,7 @@ dotnet build
 - `-o, --output-file`: Specifies the output file (Default: MemoryPack.cs)
 - `-n, --namespace`: Specifies the C# namespace for generated classes (Default: FlatData)
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for (filters types)
+- `-t, --target-dll`: Specifies a specific DLL to process
 - `-v, --verbose`: Enable verbose debug logging
 - `-sw, --suppress-warnings`: Suppress warning messages
 
