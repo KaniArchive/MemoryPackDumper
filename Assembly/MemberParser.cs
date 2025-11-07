@@ -139,14 +139,20 @@ public static class MemberParser
 
     private static MemoryPackMember CreateMemberFromProperty(PropertyDefinition property)
     {
-        var member = new MemoryPackMember(property.Name, property.PropertyType, false);
+        var member = new MemoryPackMember(property.Name, property.PropertyType, false)
+        {
+            IsPublic = property.GetMethod?.IsPublic ?? false
+        };
         AttributeExtractor.ExtractMemberAttributes(property.CustomAttributes, member);
         return member;
     }
 
     private static MemoryPackMember CreateMemberFromField(FieldDefinition field)
     {
-        var member = new MemoryPackMember(field.Name, field.FieldType, true);
+        var member = new MemoryPackMember(field.Name, field.FieldType, true)
+        {
+            IsPublic = field.IsPublic
+        };
         AttributeExtractor.ExtractMemberAttributes(field.CustomAttributes, member);
         return member;
     }

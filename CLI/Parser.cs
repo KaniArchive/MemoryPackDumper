@@ -17,7 +17,7 @@ public static class Parser
     public static bool SuppressWarnings;
 
     public static void Execute(string dummyDll, string outputFile, string nameSpace,
-        string? namespaceToLookFor, bool verbose, bool suppressWarnings)
+        string? namespaceToLookFor, string? targetDll, bool verbose, bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
 
@@ -42,25 +42,60 @@ public static class Parser
         {
             AssemblyResolver = resolver
         };
+
         Log.Info("Reading game assemblies...");
 
-        var blueArchiveDllPath = Path.Combine(_dummyAssemblyDir, "BlueArchive.dll");
-        if (!File.Exists(blueArchiveDllPath))
+        List<string> dllPaths = !string.IsNullOrEmpty(targetDll)
+            ? [Path.Combine(_dummyAssemblyDir, targetDll)]
+            : [.. Directory.GetFiles(_dummyAssemblyDir, "*.dll")
+                .AsValueEnumerable()
+                .Where(path =>
+                {
+                    var fileName = Path.GetFileName(path);
+                    return !fileName.StartsWith("System") &&
+                           !fileName.StartsWith("Unity") &&
+                           !fileName.Equals("MemoryPack.dll", StringComparison.OrdinalIgnoreCase);
+                })];
+
+        if (!string.IsNullOrEmpty(targetDll))
         {
-            Log.Global.LogFileNotFound("BlueArchive.dll", _dummyAssemblyDir);
-            Log.Shutdown();
-            Environment.Exit(1);
+            if (!File.Exists(dllPaths[0]))
+            {
+                Log.Global.LogFileNotFound(targetDll!, _dummyAssemblyDir);
+                Log.Shutdown();
+                Environment.Exit(1);
+            }
+            Log.Info($"Processing single DLL: {targetDll}");
+        }
+        else
+        {
+            Log.Info($"Processing {dllPaths.Count} DLLs from directory");
         }
 
-        var asm = AssemblyDefinition.ReadAssembly(blueArchiveDllPath, readerParameters);
+        var assemblies = new List<AssemblyDefinition>();
+        var allMemoryPackableTypes = new List<TypeDefinition>();
 
-        Log.Info("Getting a list of MemoryPackable types...");
+        foreach (var dllPath in dllPaths)
+        {
+            try
+            {
+                var assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
+                assemblies.Add(assembly);
+                var types = TypeHelper.GetAllMemoryPackableTypes(assembly.MainModule);
+                allMemoryPackableTypes.AddRange(types);
+                if (verbose) Log.Debug($"Found {types.Count} MemoryPackable types in {Path.GetFileName(dllPath)}");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"Failed to read {Path.GetFileName(dllPath)}: {ex.Message}");
+            }
+        }
 
-        var typeDefs = TypeHelper.GetAllMemoryPackableTypes(asm.MainModule);
+        Log.Info($"Getting a list of MemoryPackable types... Found {allMemoryPackableTypes.Count} total");
 
         MemoryPackSchema schema = new();
         var processedTypes = new HashSet<string>();
-        var typesToProcess = new Queue<string>(typeDefs.AsValueEnumerable().Select(t => t.FullName).ToArray());
+        var typesToProcess = new Queue<string>([.. allMemoryPackableTypes.AsValueEnumerable().Select(t => t.FullName)]);
 
         while (typesToProcess.Count > 0)
         {
@@ -69,7 +104,13 @@ public static class Parser
             if (!processedTypes.Add(typeFullName))
                 continue;
 
-            var typeDef = asm.MainModule.GetTypes().FirstOrDefault(t => t.FullName == typeFullName);
+            TypeDefinition? typeDef = null;
+            foreach (var assembly in assemblies)
+            {
+                typeDef = assembly.MainModule.GetTypes().AsValueEnumerable().FirstOrDefault(t => t.FullName == typeFullName);
+                if (typeDef != null) break;
+            }
+
             if (typeDef == null)
                 continue;
 
@@ -78,11 +119,9 @@ public static class Parser
             schema.Classes.Add(memoryPackClass);
 
             foreach (var newType in discoveredTypes)
-            {
                 typesToProcess.Enqueue(newType);
-            }
 
-            Log.Global.LogProgress(processedTypes.Count, typeDefs.Count);
+            Log.Global.LogProgress(processedTypes.Count, allMemoryPackableTypes.Count);
         }
 
         Log.Info("Adding enums...");
@@ -196,11 +235,12 @@ public static class Parser
         foreach (var formatter in member.CustomFormatters) writer.AppendFormat($"{memberIndent}[{formatter}]\n");
 
         var typeStr = TypeStringConverter.TypeToString(member.Type);
+        var visibility = member.IsPublic ? "public" : "private";
 
         if (member.IsField)
-            writer.AppendFormat($"{memberIndent}public {typeStr} {member.Name};\n");
+            writer.AppendFormat($"{memberIndent}{visibility} {typeStr} {member.Name};\n");
         else
-            writer.AppendFormat($"{memberIndent}public {typeStr} {member.Name} {{ get; set; }}\n");
+            writer.AppendFormat($"{memberIndent}{visibility} {typeStr} {member.Name} {{ get; set; }}\n");
     }
 
     private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
