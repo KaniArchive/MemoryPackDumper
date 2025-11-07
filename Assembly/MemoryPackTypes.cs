@@ -13,6 +13,7 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public readonly List<string> Attributes = [];
     public readonly string ClassName = className;
     public readonly string BaseClassName = baseClassName;
+    public TypeReference? BaseTypeReference = null;
     public readonly List<MemoryPackMember> Members = [];
     public readonly List<MemoryPackMethod> Methods = [];
     public readonly string TypeKeyword = typeKeyword;

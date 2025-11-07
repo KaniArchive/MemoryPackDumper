@@ -147,9 +147,13 @@ public static class Parser
             "MemoryPack"
         };
 
-        foreach (var member in schema.Classes.SelectMany(cls => cls.Members))
+        foreach (var cls in schema.Classes)
         {
-            TypeHelper.CollectNamespaces(member.Type, namespaces);
+            foreach (var member in cls.Members)
+                TypeHelper.CollectNamespaces(member.Type, namespaces);
+            
+            if (cls.BaseTypeReference != null)
+                TypeHelper.CollectNamespaces(cls.BaseTypeReference, namespaces);
         }
 
         foreach (var ns in namespaces.AsValueEnumerable().OrderBy(n => n))
