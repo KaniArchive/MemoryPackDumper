@@ -11,7 +11,8 @@ internal static class TypeHelper
         List<TypeDefinition> ret =
         [
             .. module.GetTypes().AsValueEnumerable().Where(t =>
-                t.CustomAttributes.AsValueEnumerable().Any(a => a.AttributeType.Name == "MemoryPackableAttribute")
+                t.CustomAttributes.AsValueEnumerable().Any(a => a.AttributeType.Name == "MemoryPackableAttribute") ||
+                t.Interfaces.AsValueEnumerable().Any(i => i.InterfaceType.Name == "IMemoryPackFormatterRegister")
             ).ToArray()
         ];
 
@@ -40,7 +41,16 @@ internal static class TypeHelper
     public static string GetBaseType(TypeDefinition typeDef)
     {
         if (typeDef.BaseType != null && typeDef.BaseType.FullName != "System.Object" && typeDef.BaseType.FullName != "System.ValueType" && typeDef.BaseType.FullName != "System.Enum")
-            return typeDef.BaseType.Name;
+        {
+            if (typeDef.BaseType is GenericInstanceType genericBase)
+                return TypeStringConverter.TypeToString(genericBase);
+            
+            var baseName = typeDef.BaseType.Name;
+            if (baseName.Contains('`'))
+                baseName = baseName[..baseName.IndexOf('`')];
+            
+            return baseName;
+        }
         return "";
     }
 }
