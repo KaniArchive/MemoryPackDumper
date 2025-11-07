@@ -13,7 +13,8 @@ public static class MemberParser
         var baseType = TypeHelper.GetBaseType(typeDef);
         var memoryPackClass = new MemoryPackClass(className, baseType, typeKeyword)
         {
-            IsRecord = IsRecordType(typeDef)
+            IsRecord = IsRecordType(typeDef),
+            BaseTypeReference = typeDef.BaseType
         };
 
         AttributeExtractor.ExtractClassAttributes(typeDef, memoryPackClass);
