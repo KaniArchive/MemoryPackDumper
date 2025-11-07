@@ -1,6 +1,7 @@
 using System.Buffers;
 using MemoryPackDumper.Helpers;
 using MemoryPackDumper.Assembly;
+using Microsoft.CodeAnalysis.CSharp;
 using Mono.Cecil;
 using Utf8StringInterpolation;
 using ZLinq;
@@ -257,9 +258,16 @@ public static class Parser
         {
             var field = memoryPackEnum.Fields[i];
             var isLast = i == memoryPackEnum.Fields.Count - 1;
-            writer.AppendFormat($"{indent}    {field.Name} = {field.Value}{(isLast ? "" : ",")}\n");
+            var fieldName = EscapeKeyword(field.Name);
+            writer.AppendFormat($"{indent}    {fieldName} = {field.Value}{(isLast ? "" : ",")}\n");
         }
 
         writer.AppendFormat($"{indent}}}\n");
+    }
+
+    private static string EscapeKeyword(string identifier)
+    {
+        var kind = SyntaxFacts.GetKeywordKind(identifier);
+        return kind != SyntaxKind.None ? $"@{identifier}" : identifier;
     }
 }
