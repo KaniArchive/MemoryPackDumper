@@ -96,9 +96,16 @@ public static class AttributeExtractor
 
     public static void ExtractMethodAttributes(MethodDefinition methodDef, MemoryPackMethod method)
     {
-        foreach (var attrName in methodDef.CustomAttributes.AsValueEnumerable()
-                     .Select(attr => GetAttributeShortName(attr.AttributeType.Name)))
-            method.Attributes.Add(attrName);
+        foreach (var attr in methodDef.CustomAttributes.AsValueEnumerable())
+        {
+            var attrName = attr.AttributeType.Name;
+            
+            if (attrName is "TokenAttribute" or "AddressAttribute" or "FieldOffsetAttribute")
+                continue;
+            
+            if (attrName.StartsWith("MemoryPack"))
+                method.Attributes.Add(GetAttributeShortName(attrName));
+        }
     }
 
     private static string GetAttributeShortName(string attributeName)

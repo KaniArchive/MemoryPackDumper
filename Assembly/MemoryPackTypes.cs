@@ -23,14 +23,14 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public string? SerializeLayout = null;
 }
 
-public class MemoryPackMethod(string name, string returnType, bool isStatic, bool isPublic)
+public class MemoryPackMethod(string name, string returnType, bool isStatic, string visibility)
 {
     public readonly List<string> Attributes = [];
-    public readonly bool IsPublic = isPublic;
     public readonly bool IsStatic = isStatic;
     public readonly string Name = name;
     public readonly List<(string Type, string Name)> Parameters = [];
     public readonly string ReturnType = returnType;
+    public readonly string Visibility = visibility;
     public bool IsConstructor = false;
 }
 
