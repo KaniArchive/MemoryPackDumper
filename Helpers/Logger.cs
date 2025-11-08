@@ -34,7 +34,7 @@ public static class Log
                 options.UsePlainTextFormatter(formatter =>
                 {
                     formatter.SetPrefixFormatter($"{0} {1} ",
-                        (in MessageTemplate template, in LogInfo info) =>
+                        (in template, in info) =>
                         {
                             var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
                             var logLevel = GetColoredLogLevel(info.LogLevel);
@@ -109,7 +109,7 @@ public static class Log
                 options.UsePlainTextFormatter(formatter =>
                 {
                     formatter.SetPrefixFormatter($"{0} {1} ",
-                        (in MessageTemplate template, in LogInfo info) =>
+                        (in template, in info) =>
                         {
                             var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
                             var logLevel = GetColoredLogLevel(info.LogLevel);

@@ -18,13 +18,16 @@ internal static class TypeHelper
 
         if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
             ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
-        
+
         if (!string.IsNullOrEmpty(Parser.Type2LookFor))
-            ret = [.. ret.AsValueEnumerable().Where(t =>
-                t.Name == Parser.Type2LookFor ||
-                t.BaseType.Name == Parser.Type2LookFor ||
-                IsSubTypeOf(t, Parser.Type2LookFor)
-            ).ToArray()];
+            ret =
+            [
+                .. ret.AsValueEnumerable().Where(t =>
+                    t.Name == Parser.Type2LookFor ||
+                    t.BaseType.Name == Parser.Type2LookFor ||
+                    IsSubTypeOf(t, Parser.Type2LookFor)
+                ).ToArray()
+            ];
 
         // Dedupe
         ret = [..ret.AsValueEnumerable().DistinctBy(t => t.FullName).ToArray()];
@@ -47,38 +50,40 @@ internal static class TypeHelper
 
     public static string GetBaseType(TypeDefinition typeDef)
     {
-        if (typeDef.BaseType != null && typeDef.BaseType.FullName != "System.Object" && typeDef.BaseType.FullName != "System.ValueType" && typeDef.BaseType.FullName != "System.Enum")
-        {
-            if (typeDef.BaseType is GenericInstanceType genericBase)
-                return TypeStringConverter.TypeToString(genericBase);
-            
-            var baseName = typeDef.BaseType.Name;
-            if (baseName.Contains('`'))
-                baseName = baseName[..baseName.IndexOf('`')];
-            
-            return baseName;
-        }
-        return "";
+        if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object" ||
+            typeDef.BaseType.FullName == "System.ValueType" || typeDef.BaseType.FullName == "System.Enum") return "";
+        if (typeDef.BaseType is GenericInstanceType genericBase)
+            return TypeStringConverter.TypeToString(genericBase);
+
+        var baseName = typeDef.BaseType.Name;
+        if (baseName.Contains('`'))
+            baseName = baseName[..baseName.IndexOf('`')];
+
+        return baseName;
     }
 
     public static void CollectNamespaces(TypeReference typeRef, HashSet<string> namespaces)
     {
-        if (typeRef is GenericInstanceType genericType)
+        switch (typeRef)
         {
-            var elementType = genericType.ElementType.Resolve();
-            AddNamespaceIfNeeded(elementType, namespaces);
-            
-            foreach (var arg in genericType.GenericArguments)
-                CollectNamespaces(arg, namespaces);
-        }
-        else if (typeRef is ArrayType arrayType)
-        {
-            CollectNamespaces(arrayType.ElementType, namespaces);
-        }
-        else
-        {
-            var resolved = typeRef.Resolve();
-            AddNamespaceIfNeeded(resolved, namespaces);
+            case GenericInstanceType genericType:
+            {
+                var elementType = genericType.ElementType.Resolve();
+                AddNamespaceIfNeeded(elementType, namespaces);
+
+                foreach (var arg in genericType.GenericArguments)
+                    CollectNamespaces(arg, namespaces);
+                break;
+            }
+            case ArrayType arrayType:
+                CollectNamespaces(arrayType.ElementType, namespaces);
+                break;
+            default:
+            {
+                var resolved = typeRef.Resolve();
+                AddNamespaceIfNeeded(resolved, namespaces);
+                break;
+            }
         }
     }
 
@@ -92,36 +97,35 @@ internal static class TypeHelper
             return;
         }
 
-        if (typeDef.Namespace == "UnityEngine")
+        if (typeDef.Namespace != "UnityEngine") return;
+        switch (typeDef.Name)
         {
-            switch (typeDef.Name)
-            {
-                case "Vector2":
-                case "Vector3":
-                case "Vector4":
-                case "Quaternion":
-                case "Matrix4x4":
-                    namespaces.Add("System.Numerics");
-                    break;
-            }
+            case "Vector2":
+            case "Vector3":
+            case "Vector4":
+            case "Quaternion":
+            case "Matrix4x4":
+                namespaces.Add("System.Numerics");
+                break;
         }
     }
 
-    public static bool IsSubTypeOf(TypeDefinition typeToCheck, string ancestorTypeName)
+    private static bool IsSubTypeOf(TypeDefinition typeToCheck, string ancestorTypeName)
     {
-        TypeReference? currentBaseRef = typeToCheck?.BaseType;
+        var currentBaseRef = typeToCheck.BaseType;
 
         while (currentBaseRef != null)
         {
             if (currentBaseRef.Name == ancestorTypeName)
                 return true;
 
-            TypeDefinition currentBaseDef = currentBaseRef.Resolve();
+            var currentBaseDef = currentBaseRef.Resolve();
 
             if (currentBaseDef == null)
                 break;
             currentBaseRef = currentBaseDef.BaseType;
         }
+
         return false;
     }
 }

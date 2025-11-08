@@ -99,10 +99,10 @@ public static class AttributeExtractor
         foreach (var attr in methodDef.CustomAttributes.AsValueEnumerable())
         {
             var attrName = attr.AttributeType.Name;
-            
+
             if (attrName is "TokenAttribute" or "AddressAttribute" or "FieldOffsetAttribute")
                 continue;
-            
+
             if (attrName.StartsWith("MemoryPack"))
                 method.Attributes.Add(GetAttributeShortName(attrName));
         }
