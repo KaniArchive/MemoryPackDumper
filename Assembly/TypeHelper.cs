@@ -17,7 +17,14 @@ internal static class TypeHelper
         ];
 
         if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
-            ret = [..ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
+            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
+        
+        if (!string.IsNullOrEmpty(Parser.Type2LookFor))
+            ret = [.. ret.AsValueEnumerable().Where(t =>
+                t.Name == Parser.Type2LookFor ||
+                t.BaseType.Name == Parser.Type2LookFor ||
+                IsSubTypeOf(t, Parser.Type2LookFor)
+            ).ToArray()];
 
         // Dedupe
         ret = [..ret.AsValueEnumerable().DistinctBy(t => t.FullName).ToArray()];
@@ -98,5 +105,23 @@ internal static class TypeHelper
                     break;
             }
         }
+    }
+
+    public static bool IsSubTypeOf(TypeDefinition typeToCheck, string ancestorTypeName)
+    {
+        TypeReference? currentBaseRef = typeToCheck?.BaseType;
+
+        while (currentBaseRef != null)
+        {
+            if (currentBaseRef.Name == ancestorTypeName)
+                return true;
+
+            TypeDefinition currentBaseDef = currentBaseRef.Resolve();
+
+            if (currentBaseDef == null)
+                break;
+            currentBaseRef = currentBaseDef.BaseType;
+        }
+        return false;
     }
 }
