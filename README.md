@@ -6,9 +6,9 @@ A tool to recover MemoryPack class definitions from game assemblies.
 
 ## Install
 
-You can download the latest pre-build binaries at [Releases](https://github.com/Deathemonic/MemoryPackDumper/releases)
+You can download the latest pre-build binaries at [Releases](https://github.com/KaniArchive/MemoryPackDumper/releases)
 
-[Windows](https://github.com/Deathemonic/MemoryPackDumper/releases/latest/download/MemoryPackDumper-win-x64.zip) | [Linux](https://github.com/Deathemonic/MemoryPackDumper/releases/latest/download/MemoryPackDumper-linux-x64.zip) | [MacOS](https://github.com/Deathemonic/MemoryPackDumper/releases/latest/download/MemoryPackDumper-osx-arm64.zip)
+[Windows](https://github.com/KaniArchive/MemoryPackDumper/releases/latest/download/MemoryPackDumper-win-x64.zip) | [Linux](https://github.com/KaniArchive/MemoryPackDumper/releases/latest/download/MemoryPackDumper-linux-x64.zip) | [MacOS](https://github.com/KaniArchive/MemoryPackDumper/releases/latest/download/MemoryPackDumper-osx-arm64.zip)
 
 ## Usage
 
@@ -32,7 +32,7 @@ MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --target-dll "Game.dll" --ou
 2. Clone this repository
 
 ```sh
-git clone https://github.com/Deathemonic/MemoryPackDumper
+git clone https://github.com/KaniArchive/MemoryPackDumper
 cd MemoryPackDumper
 ```
 
