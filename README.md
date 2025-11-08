@@ -48,6 +48,7 @@ dotnet build
 - `-o, --output-file`: Specifies the output file (Default: MemoryPack.cs)
 - `-n, --namespace`: Specifies the C# namespace for generated classes (Default: FlatData)
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for (filters types)
+- `-tl, --type-to-look-for`: Specifies the type to look for (filters types)
 - `-t, --target-dll`: Specifies a specific DLL to process
 - `-v, --verbose`: Enable verbose debug logging
 - `-sw, --suppress-warnings`: Suppress warning messages
