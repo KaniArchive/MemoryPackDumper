@@ -11,13 +11,13 @@ public class MemoryPackSchema
 public class MemoryPackClass(string className, string baseClassName, string typeKeyword = "class")
 {
     public readonly List<string> Attributes = [];
-    public readonly string ClassName = className;
     public readonly string BaseClassName = baseClassName;
-    public TypeReference? BaseTypeReference = null;
+    public readonly string ClassName = className;
     public readonly List<MemoryPackMember> Members = [];
     public readonly List<MemoryPackMethod> Methods = [];
     public readonly string TypeKeyword = typeKeyword;
     public readonly List<MemoryPackUnion> Unions = [];
+    public TypeReference? BaseTypeReference = null;
     public string? GenerateType = null;
     public bool IsRecord = false;
     public string? SerializeLayout = null;
@@ -42,19 +42,19 @@ public class MemoryPackUnion(int tag, string typeName)
 
 public class MemoryPackMember(string name, TypeReference type, bool isField)
 {
-    public bool AllowSerialize = false;
     public readonly List<string> CustomFormatters = [];
     public readonly bool IsField = isField;
+    public readonly string Name = name;
+    public readonly TypeReference Type = type;
+    public bool AllowSerialize = false;
     public bool IsIgnored = false;
     public bool IsInclude = false;
     public bool IsInit = false;
     public bool IsPublic = true;
     public bool IsReadOnly = false;
     public bool IsRequired = false;
-    public readonly string Name = name;
     public int? Order = null;
     public bool SuppressDefaultInitialization = false;
-    public readonly TypeReference Type = type;
 }
 
 public class MemoryPackEnum(TypeDefinition valueType, string enumName)

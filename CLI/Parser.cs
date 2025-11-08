@@ -1,6 +1,6 @@
 using System.Buffers;
-using MemoryPackDumper.Helpers;
 using MemoryPackDumper.Assembly;
+using MemoryPackDumper.Helpers;
 using Microsoft.CodeAnalysis.CSharp;
 using Mono.Cecil;
 using Utf8StringInterpolation;
@@ -29,7 +29,7 @@ public static class Parser
         _outputFileName = outputFile;
         _customNameSpace = nameSpace;
         NameSpace2LookFor = namespaceToLookFor;
-        Type2LookFor = type2LookFor; 
+        Type2LookFor = type2LookFor;
 
         if (!Directory.Exists(_dummyAssemblyDir))
         {
@@ -50,24 +50,28 @@ public static class Parser
 
         List<string> dllPaths = !string.IsNullOrEmpty(targetDll)
             ? [Path.Combine(_dummyAssemblyDir, targetDll)]
-            : [.. Directory.GetFiles(_dummyAssemblyDir, "*.dll")
-                .AsValueEnumerable()
-                .Where(path =>
-                {
-                    var fileName = Path.GetFileName(path);
-                    return !fileName.StartsWith("System") &&
-                           !fileName.StartsWith("Unity") &&
-                           !fileName.Equals("MemoryPack.dll", StringComparison.OrdinalIgnoreCase);
-                })];
+            :
+            [
+                .. Directory.GetFiles(_dummyAssemblyDir, "*.dll")
+                    .AsValueEnumerable()
+                    .Where(path =>
+                    {
+                        var fileName = Path.GetFileName(path);
+                        return !fileName.StartsWith("System") &&
+                               !fileName.StartsWith("Unity") &&
+                               !fileName.Equals("MemoryPack.dll", StringComparison.OrdinalIgnoreCase);
+                    })
+            ];
 
         if (!string.IsNullOrEmpty(targetDll))
         {
             if (!File.Exists(dllPaths[0]))
             {
-                Log.Global.LogFileNotFound(targetDll!, _dummyAssemblyDir);
+                Log.Global.LogFileNotFound(targetDll, _dummyAssemblyDir);
                 Log.Shutdown();
                 Environment.Exit(1);
             }
+
             Log.Info($"Processing single DLL: {targetDll}");
         }
         else
@@ -79,7 +83,6 @@ public static class Parser
         var allMemoryPackableTypes = new List<TypeDefinition>();
 
         foreach (var dllPath in dllPaths)
-        {
             try
             {
                 var assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
@@ -92,7 +95,6 @@ public static class Parser
             {
                 Log.Warning($"Failed to read {Path.GetFileName(dllPath)}: {ex.Message}");
             }
-        }
 
         Log.Info($"Getting a list of MemoryPackable types... Found {allMemoryPackableTypes.Count} total");
 
@@ -110,7 +112,8 @@ public static class Parser
             TypeDefinition? typeDef = null;
             foreach (var assembly in assemblies)
             {
-                typeDef = assembly.MainModule.GetTypes().AsValueEnumerable().FirstOrDefault(t => t.FullName == typeFullName);
+                typeDef = assembly.MainModule.GetTypes().AsValueEnumerable()
+                    .FirstOrDefault(t => t.FullName == typeFullName);
                 if (typeDef != null) break;
             }
 
@@ -129,9 +132,7 @@ public static class Parser
 
         Log.Info("Adding enums...");
         foreach (var fEnum in MemoryPackEnumsToAdd.AsValueEnumerable().Select(MemberParser.TypeToEnum))
-        {
             schema.Enums.Add(fEnum);
-        }
 
         Log.Info($"Writing C# code to {_outputFileName}...");
 
@@ -153,15 +154,12 @@ public static class Parser
         {
             foreach (var member in cls.Members)
                 TypeHelper.CollectNamespaces(member.Type, namespaces);
-            
+
             if (cls.BaseTypeReference != null)
                 TypeHelper.CollectNamespaces(cls.BaseTypeReference, namespaces);
         }
 
-        foreach (var ns in namespaces.AsValueEnumerable().OrderBy(n => n))
-        {
-            stringWriter.AppendFormat($"using {ns};\n");
-        }
+        foreach (var ns in namespaces.AsValueEnumerable().OrderBy(n => n)) stringWriter.AppendFormat($"using {ns};\n");
         stringWriter.AppendLine();
 
         if (!string.IsNullOrEmpty(_customNameSpace)) stringWriter.AppendFormat($"namespace {_customNameSpace}\n{{\n");
@@ -206,32 +204,33 @@ public static class Parser
             "static" => $"{indent}public static partial class {memoryPackClass.ClassName}{baseType}\n",
             _ => $"{indent}public partial class {memoryPackClass.ClassName}{baseType}\n"
         };
-        
+
         writer.AppendLiteral(typeDeclaration);
         writer.AppendFormat($"{indent}{{\n");
 
         foreach (var member in memoryPackClass.Members) WriteMember(ref writer, member, indent, isInterface);
-        
-        foreach (var method in memoryPackClass.Methods) WriteMethod(ref writer, method, indent, memoryPackClass.ClassName);
+
+        foreach (var method in memoryPackClass.Methods)
+            WriteMethod(ref writer, method, indent, memoryPackClass.ClassName);
 
         writer.AppendFormat($"{indent}}}\n");
     }
-    
+
     private static void WriteMethod<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         MemoryPackMethod method, string indent, string className)
         where TBufferWriter : IBufferWriter<byte>
     {
         var memberIndent = indent + "    ";
-        
+
         foreach (var attr in method.Attributes)
             writer.AppendFormat($"{memberIndent}[{attr}]\n");
-        
+
         var visibility = $"{method.Visibility} ";
         var staticModifier = method.IsStatic ? "static " : "";
         var overrideModifier = method.Name == "GetKeyForItem" ? "override " : "";
-        
+
         var parameters = method.Parameters.AsValueEnumerable().Select(p => $"{p.Type} {p.Name}").JoinToString(", ");
-        
+
         if (method.IsConstructor)
         {
             var constructorName = className.Contains('<') ? className[..className.IndexOf('<')] : className;
@@ -240,7 +239,8 @@ public static class Parser
         else
         {
             var returnType = method.ReturnType == "Void" ? "void" : method.ReturnType;
-            writer.AppendFormat($"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {method.Name}({parameters}) => default;\n");
+            writer.AppendFormat(
+                $"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {method.Name}({parameters}) => default;\n");
         }
     }
 
@@ -280,8 +280,8 @@ public static class Parser
         foreach (var formatter in member.CustomFormatters) writer.AppendFormat($"{memberIndent}[{formatter}]\n");
 
         var typeStr = TypeStringConverter.TypeToString(member.Type);
-        
-        var visibility = isInterface ? "" : (member.IsPublic ? "public " : "private ");
+
+        var visibility = isInterface ? "" : member.IsPublic ? "public " : "private ";
 
         if (member.IsField)
             writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {member.Name};\n");

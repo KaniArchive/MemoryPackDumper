@@ -30,13 +30,13 @@ public static class MemberParser
     private static string GetClassName(TypeDefinition typeDef)
     {
         var name = typeDef.Name;
-        
+
         if (!typeDef.HasGenericParameters)
             return name;
-        
+
         if (name.Contains('`'))
             name = name[..name.IndexOf('`')];
-        
+
         var genericParams = typeDef.GenericParameters.AsValueEnumerable().Select(p => p.Name).JoinToString(", ");
         return $"{name}<{genericParams}>";
     }
@@ -109,12 +109,14 @@ public static class MemberParser
 
     private static bool IsMemoryPackMethod(MethodDefinition method)
     {
-        return IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method) || IsOverrideMethod(method);
+        return IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method) ||
+               IsOverrideMethod(method);
     }
 
     private static bool IsOverrideMethod(MethodDefinition method)
     {
-        return method is { IsVirtual: true, IsNewSlot: false } && !method.IsGetter && !method.IsGetter && !method.IsSetter;
+        return method is { IsVirtual: true, IsNewSlot: false, IsGetter: false } and
+            { IsGetter: false, IsSetter: false };
     }
 
     private static bool IsMemoryPackConstructor(MethodDefinition method)
