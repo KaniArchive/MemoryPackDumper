@@ -14,11 +14,12 @@ public static class Parser
     private static string _outputFileName = "MemoryPack.cs";
     private static string? _customNameSpace = "MemoryPackData";
     public static string? NameSpace2LookFor;
+    public static string? Type2LookFor;
     public static readonly List<TypeDefinition> MemoryPackEnumsToAdd = [];
     public static bool SuppressWarnings;
 
     public static void Execute(string dummyDll, string outputFile, string nameSpace,
-        string? namespaceToLookFor, string? targetDll, bool verbose, bool suppressWarnings)
+        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool verbose, bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
 
@@ -28,6 +29,7 @@ public static class Parser
         _outputFileName = outputFile;
         _customNameSpace = nameSpace;
         NameSpace2LookFor = namespaceToLookFor;
+        Type2LookFor = type2LookFor; 
 
         if (!Directory.Exists(_dummyAssemblyDir))
         {
