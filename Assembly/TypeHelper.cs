@@ -110,6 +110,47 @@ internal static class TypeHelper
         }
     }
 
+    public static void CollectNamespacesForSplitFile(TypeReference typeRef, HashSet<string> namespaces,
+        string currentFileNamespace)
+    {
+        switch (typeRef)
+        {
+            case GenericInstanceType genericType:
+            {
+                var elementType = genericType.ElementType.Resolve();
+                AddNamespaceForSplitFile(elementType, namespaces, currentFileNamespace);
+
+                foreach (var arg in genericType.GenericArguments)
+                    CollectNamespacesForSplitFile(arg, namespaces, currentFileNamespace);
+                break;
+            }
+            case ArrayType arrayType:
+                CollectNamespacesForSplitFile(arrayType.ElementType, namespaces, currentFileNamespace);
+                break;
+            default:
+            {
+                var resolved = typeRef.Resolve();
+                AddNamespaceForSplitFile(resolved, namespaces, currentFileNamespace);
+                break;
+            }
+        }
+    }
+
+    private static void AddNamespaceForSplitFile(TypeDefinition? typeDef, HashSet<string> namespaces,
+        string currentFileNamespace)
+    {
+        if (typeDef?.Namespace == null) return;
+
+        if (typeDef.Namespace == "System" || typeDef.Namespace.StartsWith("System.") ||
+            typeDef.Namespace == "UnityEngine")
+        {
+            AddNamespaceIfNeeded(typeDef, namespaces);
+            return;
+        }
+
+        if (typeDef.Namespace != currentFileNamespace) namespaces.Add(typeDef.Namespace);
+    }
+
     private static bool IsSubTypeOf(TypeDefinition typeToCheck, string ancestorTypeName)
     {
         var currentBaseRef = typeToCheck.BaseType;

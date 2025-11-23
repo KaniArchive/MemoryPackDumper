@@ -1,9 +1,8 @@
-using System.Buffers;
 using MemoryPackDumper.Assembly;
+using MemoryPackDumper.Context;
 using MemoryPackDumper.Helpers;
-using Microsoft.CodeAnalysis.CSharp;
+using MemoryPackDumper.Services;
 using Mono.Cecil;
-using Utf8StringInterpolation;
 using ZLinq;
 
 namespace MemoryPackDumper.CLI;
@@ -13,13 +12,15 @@ public static class Parser
     private static string _dummyAssemblyDir = "DummyDll";
     private static string _outputFileName = "MemoryPack.cs";
     private static string? _customNameSpace = "MemoryPackData";
+    private static bool _splitClass;
     public static string? NameSpace2LookFor;
     public static string? Type2LookFor;
     public static readonly List<TypeDefinition> MemoryPackEnumsToAdd = [];
     public static bool SuppressWarnings;
 
     public static void Execute(string dummyDll, string outputFile, string nameSpace,
-        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool verbose, bool suppressWarnings)
+        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool verbose,
+        bool suppressWarnings)
     {
         if (verbose) Log.EnableDebugLogging();
 
@@ -28,6 +29,7 @@ public static class Parser
         _dummyAssemblyDir = dummyDll;
         _outputFileName = outputFile;
         _customNameSpace = nameSpace;
+        _splitClass = splitClass;
         NameSpace2LookFor = namespaceToLookFor;
         Type2LookFor = type2LookFor;
 
@@ -134,185 +136,19 @@ public static class Parser
         foreach (var fEnum in MemoryPackEnumsToAdd.AsValueEnumerable().Select(MemberParser.TypeToEnum))
             schema.Enums.Add(fEnum);
 
-        Log.Info($"Writing C# code to {_outputFileName}...");
+        var context = new CodeGenerationContext(_customNameSpace, _splitClass, _outputFileName);
 
-        WriteSchema(_outputFileName, schema);
+        if (_splitClass)
+        {
+            Log.Info($"Writing split C# files to {_outputFileName}/...");
+            FileGeneratorService.WriteSplitFiles(schema, context);
+        }
+        else
+        {
+            Log.Info($"Writing C# code to {_outputFileName}...");
+            FileGeneratorService.WriteSingleFile(schema, context);
+        }
 
         Log.Info("Done.");
-    }
-
-    private static void WriteSchema(string fileName, MemoryPackSchema schema)
-    {
-        using var buffer = Utf8String.CreateWriter(out var stringWriter);
-
-        var namespaces = new HashSet<string>
-        {
-            "MemoryPack"
-        };
-
-        foreach (var cls in schema.Classes)
-        {
-            foreach (var member in cls.Members)
-                TypeHelper.CollectNamespaces(member.Type, namespaces);
-
-            if (cls.BaseTypeReference != null)
-                TypeHelper.CollectNamespaces(cls.BaseTypeReference, namespaces);
-        }
-
-        foreach (var ns in namespaces.AsValueEnumerable().OrderBy(n => n)) stringWriter.AppendFormat($"using {ns};\n");
-        stringWriter.AppendLine();
-
-        if (!string.IsNullOrEmpty(_customNameSpace)) stringWriter.AppendFormat($"namespace {_customNameSpace}\n{{\n");
-
-        foreach (var memoryPackEnum in schema.Enums)
-        {
-            WriteEnum(ref stringWriter, memoryPackEnum);
-            stringWriter.AppendLine();
-        }
-
-        foreach (var memoryPackClass in schema.Classes)
-        {
-            WriteClass(ref stringWriter, memoryPackClass);
-            stringWriter.AppendLine();
-        }
-
-        if (!string.IsNullOrEmpty(_customNameSpace)) stringWriter.AppendLiteral("}\n");
-
-        stringWriter.Flush();
-
-        File.WriteAllBytes(fileName, buffer.ToArray());
-    }
-
-    private static void WriteClass<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
-        MemoryPackClass memoryPackClass)
-        where TBufferWriter : IBufferWriter<byte>
-    {
-        var indent = string.IsNullOrEmpty(_customNameSpace) ? "" : "    ";
-        var baseType = memoryPackClass.BaseClassName == "" ? "" : $" : {memoryPackClass.BaseClassName}";
-        var isInterface = memoryPackClass.TypeKeyword == "interface";
-
-        WriteMemoryPackableAttribute(ref writer, memoryPackClass, indent);
-
-        foreach (var union in memoryPackClass.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
-            writer.AppendFormat($"{indent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
-
-        var typeDeclaration = memoryPackClass.TypeKeyword switch
-        {
-            "interface" => $"{indent}public partial interface {memoryPackClass.ClassName}{baseType}\n",
-            "struct" => $"{indent}public partial struct {memoryPackClass.ClassName}{baseType}\n",
-            "abstract" => $"{indent}public abstract partial class {memoryPackClass.ClassName}{baseType}\n",
-            "static" => $"{indent}public static partial class {memoryPackClass.ClassName}{baseType}\n",
-            _ => $"{indent}public partial class {memoryPackClass.ClassName}{baseType}\n"
-        };
-
-        writer.AppendLiteral(typeDeclaration);
-        writer.AppendFormat($"{indent}{{\n");
-
-        foreach (var member in memoryPackClass.Members) WriteMember(ref writer, member, indent, isInterface);
-
-        foreach (var method in memoryPackClass.Methods)
-            WriteMethod(ref writer, method, indent, memoryPackClass.ClassName);
-
-        writer.AppendFormat($"{indent}}}\n");
-    }
-
-    private static void WriteMethod<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
-        MemoryPackMethod method, string indent, string className)
-        where TBufferWriter : IBufferWriter<byte>
-    {
-        var memberIndent = indent + "    ";
-
-        foreach (var attr in method.Attributes)
-            writer.AppendFormat($"{memberIndent}[{attr}]\n");
-
-        var visibility = $"{method.Visibility} ";
-        var staticModifier = method.IsStatic ? "static " : "";
-        var overrideModifier = method.Name == "GetKeyForItem" ? "override " : "";
-
-        var parameters = method.Parameters.AsValueEnumerable().Select(p => $"{p.Type} {p.Name}").JoinToString(", ");
-
-        if (method.IsConstructor)
-        {
-            var constructorName = className.Contains('<') ? className[..className.IndexOf('<')] : className;
-            writer.AppendFormat($"{memberIndent}{visibility}{constructorName}({parameters}) {{ }}\n");
-        }
-        else
-        {
-            var returnType = method.ReturnType == "Void" ? "void" : method.ReturnType;
-            writer.AppendFormat(
-                $"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {method.Name}({parameters}) => default;\n");
-        }
-    }
-
-    private static void WriteMemoryPackableAttribute<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
-        MemoryPackClass memoryPackClass, string indent)
-        where TBufferWriter : IBufferWriter<byte>
-    {
-        var attrParams = new List<string>();
-
-        if (!EnumMapper.IsDefaultGenerateType(memoryPackClass.GenerateType))
-            attrParams.Add($"GenerateType.{memoryPackClass.GenerateType}");
-
-        if (!EnumMapper.IsDefaultSerializeLayout(memoryPackClass.SerializeLayout))
-            attrParams.Add($"SerializeLayout.{memoryPackClass.SerializeLayout}");
-
-        if (attrParams.Count > 0)
-            writer.AppendFormat($"{indent}[MemoryPackable({string.Join(", ", attrParams)})]\n");
-        else
-            writer.AppendFormat($"{indent}[MemoryPackable]\n");
-    }
-
-    private static void WriteMember<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, MemoryPackMember member,
-        string indent, bool isInterface = false)
-        where TBufferWriter : IBufferWriter<byte>
-    {
-        var memberIndent = indent + "    ";
-
-        if (member.Order.HasValue) writer.AppendFormat($"{memberIndent}[MemoryPackOrder({member.Order.Value})]\n");
-
-        if (member.IsInclude) writer.AppendFormat($"{memberIndent}[MemoryPackInclude]\n");
-
-        if (member.SuppressDefaultInitialization)
-            writer.AppendFormat($"{memberIndent}[SuppressDefaultInitialization]\n");
-
-        if (member.AllowSerialize) writer.AppendFormat($"{memberIndent}[MemoryPackAllowSerialize]\n");
-
-        foreach (var formatter in member.CustomFormatters) writer.AppendFormat($"{memberIndent}[{formatter}]\n");
-
-        var typeStr = TypeStringConverter.TypeToString(member.Type);
-
-        var visibility = isInterface ? "" : member.IsPublic ? "public " : "private ";
-
-        if (member.IsField)
-            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {member.Name};\n");
-        else
-            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {member.Name} {{ get; set; }}\n");
-    }
-
-    private static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
-        MemoryPackEnum memoryPackEnum)
-        where TBufferWriter : IBufferWriter<byte>
-    {
-        var indent = string.IsNullOrEmpty(_customNameSpace) ? "" : "    ";
-
-        var enumTypeName = TypeStringConverter.SystemToStringType(memoryPackEnum.Type);
-        writer.AppendFormat($"{indent}public enum {memoryPackEnum.EnumName} : {enumTypeName}\n");
-        writer.AppendFormat($"{indent}{{\n");
-
-        for (var i = 0; i < memoryPackEnum.Fields.Count; i++)
-        {
-            var field = memoryPackEnum.Fields[i];
-            var isLast = i == memoryPackEnum.Fields.Count - 1;
-            var fieldName = EscapeKeyword(field.Name);
-            writer.AppendFormat($"{indent}    {fieldName} = {field.Value}{(isLast ? "" : ",")}\n");
-        }
-
-        writer.AppendFormat($"{indent}}}\n");
-    }
-
-    private static string EscapeKeyword(string identifier)
-    {
-        var kind = SyntaxFacts.GetKeywordKind(identifier);
-        return kind != SyntaxKind.None ? $"@{identifier}" : identifier;
     }
 }

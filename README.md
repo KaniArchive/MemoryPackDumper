@@ -16,11 +16,20 @@ You can download the latest pre-build binaries at [Releases](https://github.com/
 # Show help
 MemoryPackDumper.exe --help
 
-# Generate MemoryPack classes
+# Generate MemoryPack classes (single file)
 MemoryPackDumper.exe --dummy-dll "path/to/dummydll"
 
 # Specify output file
 MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --output-file "MemoryPack.cs"
+
+# Split classes into individual files organized by namespace, output-file will now make a folder
+MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --split-class --output-file "./output"
+
+# Split with custom root namespace
+MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --split-class --namespace "MyGame" --output-file "./output"
+
+# Split with no root namespace (use original namespaces only)
+MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --split-class --namespace "" --output-file "./output"
 
 # Specify a dll to limit the search
 MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --target-dll "Game.dll" --output-file "MemoryPack.cs"
@@ -45,8 +54,9 @@ dotnet build
 ## Options
 
 - `-d, --dummy-dll`: Specifies the dummy DLL directory (Required)
-- `-o, --output-file`: Specifies the output file (Default: MemoryPack.cs)
-- `-n, --namespace`: Specifies the C# namespace for generated classes (Default: FlatData)
+- `-o, --output-file`: Specifies the output file or directory when using --split-class (Default: MemoryPack.cs)
+- `-n, --namespace`: Specifies the C# namespace for generated classes (Default: MemoryPackData)
+- `-sc, --split-class`: Split classes into individual files organized by namespace folders
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for (filters types)
 - `-tl, --type-to-look-for`: Specifies the type to look for (filters types)
 - `-t, --target-dll`: Specifies a specific DLL to process
