@@ -1,0 +1,20 @@
+namespace MemoryPackDumper.Context;
+
+public readonly record struct NamespaceContext(
+    string originalNamespace,
+    string finalNamespace,
+    string? rootPrefix
+)
+{
+    public static NamespaceContext Build(string originalNamespace, string? customNamespace)
+    {
+        if (string.IsNullOrEmpty(customNamespace))
+            return new NamespaceContext(originalNamespace, originalNamespace, null);
+
+        if (string.IsNullOrEmpty(originalNamespace))
+            return new NamespaceContext("", customNamespace, customNamespace);
+
+        var finalNamespace = $"{customNamespace}.{originalNamespace}";
+        return new NamespaceContext(originalNamespace, finalNamespace, customNamespace);
+    }
+}

@@ -6,11 +6,12 @@ public static class Args
     ///     MemoryPack Dumper
     /// </summary>
     /// <param name="dummyDll">-d, Specifies the dummy DLL directory.</param>
-    /// <param name="outputFile">-o, Specifies the output file.</param>
+    /// <param name="outputFile">-o, Specifies the output file or directory (when using --split-class).</param>
     /// <param name="namespace">-n, Specifies the C# namespace for generated classes</param>
     /// <param name="namespaceToLookFor">-nl, Specifies the namespace to look for</param>
     /// <param name="typeToLookFor">-tl, Specifies the type to look for</param>
     /// <param name="targetDll">-t, Specifies a specific DLL to process (if not set, processes all DLLs)</param>
+    /// <param name="splitClass">-sc, Split classes into individual files organized by namespace</param>
     /// <param name="verbose">-v, Enable verbose debug logging.</param>
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(
@@ -20,9 +21,10 @@ public static class Args
         string? namespaceToLookFor = null,
         string? typeToLookFor = null,
         string? targetDll = null,
+        bool splitClass = false,
         bool verbose = false,
         bool suppressWarnings = false)
     {
-        Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, verbose, suppressWarnings);
+        Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass, verbose, suppressWarnings);
     }
 }

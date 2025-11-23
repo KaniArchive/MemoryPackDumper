@@ -14,7 +14,8 @@ public static class MemberParser
         var memoryPackClass = new MemoryPackClass(className, baseType, typeKeyword)
         {
             IsRecord = IsRecordType(typeDef),
-            BaseTypeReference = typeDef.BaseType
+            BaseTypeReference = typeDef.BaseType,
+            OriginalNamespace = typeDef.Namespace ?? ""
         };
 
         AttributeExtractor.ExtractClassAttributes(typeDef, memoryPackClass);
@@ -23,6 +24,7 @@ public static class MemberParser
         ProcessFields(typeDef, memoryPackClass, discoveredTypes);
         SortMembersByOrder(memoryPackClass);
         ProcessMethods(typeDef, memoryPackClass);
+        ProcessNestedTypes(typeDef, memoryPackClass, discoveredTypes);
 
         return memoryPackClass;
     }
@@ -197,7 +199,10 @@ public static class MemberParser
     public static MemoryPackEnum TypeToEnum(TypeDefinition typeDef)
     {
         var underlyingType = GetEnumUnderlyingType(typeDef);
-        var memoryPackEnum = new MemoryPackEnum(underlyingType, typeDef.Name);
+        var memoryPackEnum = new MemoryPackEnum(underlyingType, typeDef.Name)
+        {
+            OriginalNamespace = typeDef.Namespace ?? ""
+        };
 
         foreach (var fieldDef in typeDef.Fields.AsValueEnumerable().Where(f => f.HasConstant))
         {
@@ -215,5 +220,19 @@ public static class MemberParser
 
         Log.Warning($"Could not determine underlying type for enum {typeDef.FullName}");
         return typeDef.Module.TypeSystem.Int32.Resolve();
+    }
+
+    private static void ProcessNestedTypes(TypeDefinition typeDef, MemoryPackClass memoryPackClass,
+        HashSet<string> discoveredTypes)
+    {
+        if (!typeDef.HasNestedTypes) return;
+
+        foreach (var nestedType in typeDef.NestedTypes)
+        {
+            if (!nestedType.IsNestedPublic) continue;
+
+            var nestedClass = TypeToMemoryPackClass(nestedType, discoveredTypes);
+            memoryPackClass.NestedClasses.Add(nestedClass);
+        }
     }
 }
