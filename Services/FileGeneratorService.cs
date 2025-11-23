@@ -27,9 +27,11 @@ public static class FileGeneratorService
         stringWriter.AppendLine();
 
         if (!string.IsNullOrEmpty(context.customNamespace))
-            stringWriter.AppendFormat($"namespace {context.customNamespace}\n{{\n");
+        {
+            stringWriter.AppendFormat($"namespace {context.customNamespace};\n\n");
+        }
 
-        var indent = string.IsNullOrEmpty(context.customNamespace) ? "" : "    ";
+        var indent = string.IsNullOrEmpty(context.customNamespace) ? "" : null;
 
         foreach (var enumContext in schema.Enums.Select(memoryPackEnum => new EnumWriteContext(memoryPackEnum, indent)))
         {
@@ -43,9 +45,6 @@ public static class FileGeneratorService
             CodeWriterService.WriteClass(ref stringWriter, classContext);
             stringWriter.AppendLine();
         }
-
-        if (!string.IsNullOrEmpty(context.customNamespace))
-            stringWriter.AppendLiteral("}\n");
 
         stringWriter.Flush();
         File.WriteAllBytes(context.outputPath, buffer.ToArray());
