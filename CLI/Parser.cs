@@ -1,8 +1,8 @@
+using dnlib.DotNet;
 using MemoryPackDumper.Assembly;
 using MemoryPackDumper.Context;
 using MemoryPackDumper.Helpers;
 using MemoryPackDumper.Services;
-using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.CLI;
@@ -13,12 +13,12 @@ public static class Parser
         string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool allowHidden,
         bool verbose, bool suppressWarnings)
     {
-        ParserOptionsContext.Current = new ParserOptionsContext
+        ParserOptionsContext.current = new ParserOptionsContext
         {
-            SuppressWarnings = suppressWarnings,
-            AllowHidden = allowHidden,
-            NamespaceToLookFor = namespaceToLookFor,
-            TypeToLookFor = type2LookFor
+            suppressWarnings = suppressWarnings,
+            allowHidden = allowHidden,
+            namespaceToLookFor = namespaceToLookFor,
+            typeToLookFor = type2LookFor
         };
 
         if (verbose) Log.EnableDebugLogging();
@@ -120,7 +120,8 @@ public static class Parser
         }
 
         Log.Info("Adding enums...");
-        foreach (var fEnum in ParserOptionsContext.Current.DiscoveredEnums.AsValueEnumerable().Select(MemberParser.TypeToEnum))
+        foreach (var fEnum in ParserOptionsContext.current.discoveredEnums.AsValueEnumerable()
+                     .Select(MemberParser.TypeToEnum))
             schema.Enums.Add(fEnum);
 
         var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);

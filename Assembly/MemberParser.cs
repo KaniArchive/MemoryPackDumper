@@ -1,6 +1,5 @@
-using MemoryPackDumper.Context;
-using MemoryPackDumper.Helpers;
 using dnlib.DotNet;
+using MemoryPackDumper.Context;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
@@ -84,12 +83,12 @@ public static class MemberParser
     private static bool IsCompilerGeneratedBackingField(FieldDef field)
     {
         var name = field.Name.String;
-        return name.StartsWith("<") && name.EndsWith(">k__BackingField");
+        return name.StartsWith('<') && name.EndsWith(">k__BackingField");
     }
 
     private static bool ShouldIncludeMember(MemoryPackMember member, bool isPublic)
     {
-        if (ParserOptionsContext.Current.AllowHidden) return !member.IsIgnored;
+        if (ParserOptionsContext.current.allowHidden) return !member.IsIgnored;
         return member.IsInclude || (!member.IsIgnored && isPublic);
     }
 
@@ -132,10 +131,7 @@ public static class MemberParser
         if (method is not { IsVirtual: true, IsNewSlot: false, IsGetter: false, IsSetter: false })
             return false;
 
-        if (method.Name == "Serialize" || method.Name == "Deserialize")
-            return false;
-
-        return true;
+        return method.Name != "Serialize" && method.Name != "Deserialize";
     }
 
     private static bool IsMemoryPackConstructor(MethodDef method)
@@ -177,7 +173,7 @@ public static class MemberParser
 
         foreach (var param in methodDef.Parameters)
         {
-             if (param.IsHiddenThisParameter) continue;
+            if (param.IsHiddenThisParameter) continue;
 
             var paramType = TypeStringConverter.TypeToString(param.Type);
             method.Parameters.Add((paramType, param.Name));
@@ -238,7 +234,6 @@ public static class MemberParser
     {
         var valueField = typeDef.Fields.FirstOrDefault(f => f.Name == "value__");
         if (valueField != null)
-        {
             return valueField.FieldType.FullName switch
             {
                 "System.Byte" => "byte",
@@ -251,7 +246,6 @@ public static class MemberParser
                 "System.UInt64" => "ulong",
                 _ => "int"
             };
-        }
 
         return "int";
     }
@@ -281,15 +275,14 @@ public static class MemberParser
         var baseTypeName = nestedType.BaseType.Name.String;
         if (!baseTypeName.StartsWith("MemoryPackFormatter")) return false;
 
-        if (nestedType.BaseType is TypeSpec typeSpec && typeSpec.TypeSig is GenericInstSig genericBase && genericBase.GenericArguments.Count > 0)
-        {
-            var formattedTypeName = genericBase.GenericArguments[0].TypeName;
-            var parentBaseName = parentClassName.Contains('<')
-                ? parentClassName[..parentClassName.IndexOf('<')]
-                : parentClassName;
+        if (nestedType.BaseType is not TypeSpec { TypeSig: GenericInstSig genericBase } ||
+            genericBase.GenericArguments.Count <= 0) return false;
+        var formattedTypeName = genericBase.GenericArguments[0].TypeName;
+        var parentBaseName = parentClassName.Contains('<')
+            ? parentClassName[..parentClassName.IndexOf('<')]
+            : parentClassName;
 
-            if (formattedTypeName == parentBaseName) return true;
-        }
+        if (formattedTypeName == parentBaseName) return true;
 
         return false;
     }

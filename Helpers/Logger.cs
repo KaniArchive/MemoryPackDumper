@@ -87,7 +87,7 @@ public static class Log
 
     public static void Warning(string message)
     {
-        if (ParserOptionsContext.Current.SuppressWarnings) return;
+        if (ParserOptionsContext.current.suppressWarnings) return;
 
         EnsureInitialized();
         _logger!.ZLogWarning($"{message}");
@@ -134,7 +134,7 @@ public static partial class LogMessages
 
     public static void LogUnknownSystemType(this ILogger logger, string typeName)
     {
-        if (!ParserOptionsContext.Current.SuppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
+        if (!ParserOptionsContext.current.suppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
     }
 
     [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
@@ -145,6 +145,6 @@ public static partial class LogMessages
 
     public static void LogSkippingCall(this ILogger logger, ulong address, string reason)
     {
-        if (!ParserOptionsContext.Current.SuppressWarnings) logger.LogSkippingCallInternal(address, reason);
+        if (!ParserOptionsContext.current.suppressWarnings) logger.LogSkippingCallInternal(address, reason);
     }
 }

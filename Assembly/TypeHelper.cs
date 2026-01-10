@@ -1,5 +1,5 @@
-using MemoryPackDumper.Context;
 using dnlib.DotNet;
+using MemoryPackDumper.Context;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
@@ -16,18 +16,18 @@ internal static class TypeHelper
             ).ToArray()
         ];
 
-        var opts = ParserOptionsContext.Current;
+        var opts = ParserOptionsContext.current;
 
-        if (!string.IsNullOrEmpty(opts.NamespaceToLookFor))
-            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == opts.NamespaceToLookFor).ToArray()];
+        if (!string.IsNullOrEmpty(opts.namespaceToLookFor))
+            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == opts.namespaceToLookFor).ToArray()];
 
-        if (!string.IsNullOrEmpty(opts.TypeToLookFor))
+        if (!string.IsNullOrEmpty(opts.typeToLookFor))
             ret =
             [
                 .. ret.AsValueEnumerable().Where(t =>
-                    t.Name == opts.TypeToLookFor ||
-                    (t.BaseType != null && t.BaseType.Name == opts.TypeToLookFor) ||
-                    IsSubTypeOf(t, opts.TypeToLookFor)
+                    t.Name == opts.typeToLookFor ||
+                    (t.BaseType != null && t.BaseType.Name == opts.typeToLookFor) ||
+                    IsSubTypeOf(t, opts.typeToLookFor)
                 ).ToArray()
             ];
 
@@ -53,9 +53,9 @@ internal static class TypeHelper
     {
         if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object" ||
             typeDef.BaseType.FullName == "System.ValueType" || typeDef.BaseType.FullName == "System.Enum") return "";
-        
-        if (typeDef.BaseType is TypeSpec typeSpec && typeSpec.TypeSig is GenericInstSig genericSig)
-             return TypeStringConverter.TypeToString(genericSig);
+
+        if (typeDef.BaseType is TypeSpec { TypeSig: GenericInstSig genericSig })
+            return TypeStringConverter.TypeToString(genericSig);
 
         var baseName = typeDef.BaseType.Name.String;
         if (baseName.Contains('`'))
@@ -90,15 +90,17 @@ internal static class TypeHelper
 
     public static void CollectNamespaces(ITypeDefOrRef? typeRef, HashSet<string> namespaces)
     {
-        if (typeRef == null) return;
-
-        if (typeRef is TypeSpec typeSpec)
+        switch (typeRef)
         {
-            CollectNamespaces(typeSpec.TypeSig, namespaces);
-            return;
+            case null:
+                return;
+            case TypeSpec typeSpec:
+                CollectNamespaces(typeSpec.TypeSig, namespaces);
+                return;
+            default:
+                AddNamespaceIfNeeded(typeRef, namespaces);
+                break;
         }
-
-        AddNamespaceIfNeeded(typeRef, namespaces);
     }
 
     private static void AddNamespaceIfNeeded(ITypeDefOrRef? typeRef, HashSet<string> namespaces)
@@ -108,14 +110,13 @@ internal static class TypeHelper
         var ns = typeRef.Namespace;
         if (UTF8String.IsNullOrEmpty(ns)) return;
 
-        var nsStr = ns.ToString();
-        if (nsStr.StartsWith("System."))
+        if (ns.StartsWith("System."))
         {
-            namespaces.Add(nsStr);
+            namespaces.Add(ns);
             return;
         }
 
-        if (nsStr != "UnityEngine") return;
+        if (ns != "UnityEngine") return;
         var name = typeRef.Name?.String;
         switch (name)
         {
@@ -176,14 +177,13 @@ internal static class TypeHelper
         var nsUtf8 = typeRef.Namespace;
         if (UTF8String.IsNullOrEmpty(nsUtf8)) return;
 
-        var ns = nsUtf8.ToString();
-        if (ns == "System" || ns.StartsWith("System."))
+        if (nsUtf8 == "System" || nsUtf8.StartsWith("System."))
         {
-            namespaces.Add(ns);
+            namespaces.Add(nsUtf8);
             return;
         }
 
-        if (ns == "UnityEngine")
+        if (nsUtf8 == "UnityEngine")
         {
             var name = typeRef.Name?.ToString();
             switch (name)
@@ -196,10 +196,11 @@ internal static class TypeHelper
                     namespaces.Add("System.Numerics");
                     break;
             }
+
             return;
         }
 
-        if (ns != currentFileNamespace) namespaces.Add(ns);
+        if (nsUtf8 != currentFileNamespace) namespaces.Add(nsUtf8);
     }
 
     private static bool IsSubTypeOf(TypeDef typeToCheck, string ancestorTypeName)

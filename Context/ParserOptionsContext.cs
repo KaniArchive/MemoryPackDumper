@@ -4,11 +4,11 @@ namespace MemoryPackDumper.Context;
 
 public sealed class ParserOptionsContext
 {
-    public static ParserOptionsContext Current { get; set; } = new();
+    public static ParserOptionsContext current { get; set; } = new();
 
-    public bool SuppressWarnings { get; init; }
-    public bool AllowHidden { get; init; }
-    public string? NamespaceToLookFor { get; init; }
-    public string? TypeToLookFor { get; init; }
-    public List<TypeDef> DiscoveredEnums { get; } = [];
+    public bool suppressWarnings { get; init; }
+    public bool allowHidden { get; init; }
+    public string? namespaceToLookFor { get; init; }
+    public string? typeToLookFor { get; init; }
+    public List<TypeDef> discoveredEnums { get; } = [];
 }
