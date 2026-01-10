@@ -56,8 +56,7 @@ public static class CodeWriterService
     {
         var actualIndent = context.actualIndent;
 
-        var enumTypeName = TypeStringConverter.SystemToStringType(context.@enum.Type);
-        writer.AppendFormat($"{actualIndent}public enum {context.@enum.EnumName} : {enumTypeName}\n");
+        writer.AppendFormat($"{actualIndent}public enum {context.@enum.EnumName} : {context.@enum.UnderlyingType}\n");
         writer.AppendFormat($"{actualIndent}{{\n");
 
         for (var i = 0; i < context.@enum.Fields.Count; i++)

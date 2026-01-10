@@ -138,8 +138,7 @@ internal static class TypeHelper
         {
             case GenericInstSig genericType:
             {
-                var elementType = genericType.GenericType.ToTypeDefOrRef().ResolveTypeDef();
-                AddNamespaceForSplitFile(elementType, namespaces, currentFileNamespace);
+                AddNamespaceForSplitFile(genericType.GenericType?.TypeDefOrRef, namespaces, currentFileNamespace);
 
                 foreach (var arg in genericType.GenericArguments)
                     CollectNamespacesForSplitFile(arg, namespaces, currentFileNamespace);
@@ -152,11 +151,8 @@ internal static class TypeHelper
                 CollectNamespacesForSplitFile(arrayType.Next, namespaces, currentFileNamespace);
                 break;
             default:
-            {
-                var resolved = typeSig.TryGetTypeDef();
-                AddNamespaceForSplitFile(resolved, namespaces, currentFileNamespace);
+                AddNamespaceForSplitFile(typeSig.ToTypeDefOrRef(), namespaces, currentFileNamespace);
                 break;
-            }
         }
     }
 
@@ -171,20 +167,37 @@ internal static class TypeHelper
             return;
         }
 
-        var resolved = typeRef.ResolveTypeDef();
-        AddNamespaceForSplitFile(resolved, namespaces, currentFileNamespace);
+        AddNamespaceForSplitFile(typeRef, namespaces, currentFileNamespace);
     }
 
-    private static void AddNamespaceForSplitFile(TypeDef? typeDef, HashSet<string> namespaces,
+    private static void AddNamespaceForSplitFile(ITypeDefOrRef? typeRef, HashSet<string> namespaces,
         string currentFileNamespace)
     {
-        if (typeDef == null) return;
-        var ns = typeDef.Namespace?.String;
-        if (string.IsNullOrEmpty(ns)) return;
+        if (typeRef == null) return;
 
-        if (ns == "System" || ns.StartsWith("System.") || ns == "UnityEngine")
+        var nsUtf8 = typeRef.Namespace;
+        if (UTF8String.IsNullOrEmpty(nsUtf8)) return;
+
+        var ns = nsUtf8.ToString();
+        if (ns == "System" || ns.StartsWith("System."))
         {
-            AddNamespaceIfNeeded(typeDef, namespaces);
+            namespaces.Add(ns);
+            return;
+        }
+
+        if (ns == "UnityEngine")
+        {
+            var name = typeRef.Name?.ToString();
+            switch (name)
+            {
+                case "Vector2":
+                case "Vector3":
+                case "Vector4":
+                case "Quaternion":
+                case "Matrix4x4":
+                    namespaces.Add("System.Numerics");
+                    break;
+            }
             return;
         }
 
