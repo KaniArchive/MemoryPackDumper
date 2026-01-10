@@ -70,8 +70,7 @@ internal static class TypeHelper
         {
             case GenericInstSig genericType:
             {
-                var elementType = genericType.GenericType.ToTypeDefOrRef().ResolveTypeDef();
-                AddNamespaceIfNeeded(elementType, namespaces);
+                AddNamespaceIfNeeded(genericType.GenericType?.TypeDefOrRef, namespaces);
 
                 foreach (var arg in genericType.GenericArguments)
                     CollectNamespaces(arg, namespaces);
@@ -84,11 +83,8 @@ internal static class TypeHelper
                 CollectNamespaces(arrayType.Next, namespaces);
                 break;
             default:
-            {
-                var resolved = typeSig.TryGetTypeDef();
-                AddNamespaceIfNeeded(resolved, namespaces);
+                AddNamespaceIfNeeded(typeSig.ToTypeDefOrRef(), namespaces);
                 break;
-            }
         }
     }
 
@@ -102,24 +98,25 @@ internal static class TypeHelper
             return;
         }
 
-        var resolved = typeRef.ResolveTypeDef();
-        AddNamespaceIfNeeded(resolved, namespaces);
+        AddNamespaceIfNeeded(typeRef, namespaces);
     }
 
-    private static void AddNamespaceIfNeeded(TypeDef? typeDef, HashSet<string> namespaces)
+    private static void AddNamespaceIfNeeded(ITypeDefOrRef? typeRef, HashSet<string> namespaces)
     {
-        if (typeDef == null) return;
-        var ns = typeDef.Namespace?.String;
-        if (string.IsNullOrEmpty(ns)) return;
+        if (typeRef == null) return;
 
-        if (ns.StartsWith("System."))
+        var ns = typeRef.Namespace;
+        if (UTF8String.IsNullOrEmpty(ns)) return;
+
+        var nsStr = ns.ToString();
+        if (nsStr.StartsWith("System."))
         {
-            namespaces.Add(ns);
+            namespaces.Add(nsStr);
             return;
         }
 
-        if (ns != "UnityEngine") return;
-        var name = typeDef.Name?.String;
+        if (nsStr != "UnityEngine") return;
+        var name = typeRef.Name?.String;
         switch (name)
         {
             case "Vector2":
