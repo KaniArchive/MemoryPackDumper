@@ -9,50 +9,40 @@ namespace MemoryPackDumper.CLI;
 
 public static class Parser
 {
-    private static string _dummyAssemblyDir = "DummyDll";
-    private static string _outputFileName = "MemoryPack.cs";
-    private static string? _customNameSpace = "MemoryPackData";
-    private static bool _splitClass;
-    public static string? NameSpace2LookFor;
-    public static string? Type2LookFor;
-    public static readonly List<TypeDef> MemoryPackEnumsToAdd = [];
-    public static bool SuppressWarnings;
-
     public static void Execute(string dummyDll, string outputFile, string nameSpace,
-        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool verbose,
-        bool suppressWarnings)
+        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool allowHidden,
+        bool verbose, bool suppressWarnings)
     {
+        ParserOptionsContext.Current = new ParserOptionsContext
+        {
+            SuppressWarnings = suppressWarnings,
+            AllowHidden = allowHidden,
+            NamespaceToLookFor = namespaceToLookFor,
+            TypeToLookFor = type2LookFor
+        };
+
         if (verbose) Log.EnableDebugLogging();
 
-        SuppressWarnings = suppressWarnings;
-
-        _dummyAssemblyDir = dummyDll;
-        _outputFileName = outputFile;
-        _customNameSpace = nameSpace;
-        _splitClass = splitClass;
-        NameSpace2LookFor = namespaceToLookFor;
-        Type2LookFor = type2LookFor;
-
-        if (!Directory.Exists(_dummyAssemblyDir))
+        if (!Directory.Exists(dummyDll))
         {
-            Log.Global.LogDummyDirNotFound(_dummyAssemblyDir);
+            Log.Global.LogDummyDirNotFound(dummyDll);
             Log.Error("Please provide a valid path using -dummydll or -d.");
             Log.Shutdown();
             Environment.Exit(1);
         }
 
         var assemblyResolver = new AssemblyResolver();
-        assemblyResolver.PreSearchPaths.Add(_dummyAssemblyDir);
+        assemblyResolver.PreSearchPaths.Add(dummyDll);
         var moduleContext = new ModuleContext(assemblyResolver);
         var readerParameters = new ModuleCreationOptions(moduleContext);
 
         Log.Info("Reading game assemblies...");
 
         List<string> dllPaths = !string.IsNullOrEmpty(targetDll)
-            ? [Path.Combine(_dummyAssemblyDir, targetDll)]
+            ? [Path.Combine(dummyDll, targetDll)]
             :
             [
-                .. Directory.GetFiles(_dummyAssemblyDir, "*.dll")
+                .. Directory.GetFiles(dummyDll, "*.dll")
                     .AsValueEnumerable()
                     .Where(path =>
                     {
@@ -67,7 +57,7 @@ public static class Parser
         {
             if (!File.Exists(dllPaths[0]))
             {
-                Log.Global.LogFileNotFound(targetDll, _dummyAssemblyDir);
+                Log.Global.LogFileNotFound(targetDll, dummyDll);
                 Log.Shutdown();
                 Environment.Exit(1);
             }
@@ -130,19 +120,19 @@ public static class Parser
         }
 
         Log.Info("Adding enums...");
-        foreach (var fEnum in MemoryPackEnumsToAdd.AsValueEnumerable().Select(MemberParser.TypeToEnum))
+        foreach (var fEnum in ParserOptionsContext.Current.DiscoveredEnums.AsValueEnumerable().Select(MemberParser.TypeToEnum))
             schema.Enums.Add(fEnum);
 
-        var context = new CodeGenerationContext(_customNameSpace, _splitClass, _outputFileName);
+        var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
 
-        if (_splitClass)
+        if (splitClass)
         {
-            Log.Info($"Writing split C# files to {_outputFileName}/...");
+            Log.Info($"Writing split C# files to {outputFile}/...");
             FileGeneratorService.WriteSplitFiles(schema, context);
         }
         else
         {
-            Log.Info($"Writing C# code to {_outputFileName}...");
+            Log.Info($"Writing C# code to {outputFile}...");
             FileGeneratorService.WriteSingleFile(schema, context);
         }
 

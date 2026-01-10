@@ -40,7 +40,6 @@ public static class CodeWriterService
                      new MethodWriteContext(method, actualIndent, context.@class.ClassName)))
             WriteMethod(ref writer, methodContext);
 
-        // Write nested classes
         foreach (var nestedClass in context.@class.NestedClasses)
         {
             writer.AppendLine();

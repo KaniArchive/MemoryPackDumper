@@ -1,4 +1,4 @@
-using MemoryPackDumper.CLI;
+using MemoryPackDumper.Context;
 using dnlib.DotNet;
 using ZLinq;
 
@@ -16,20 +16,21 @@ internal static class TypeHelper
             ).ToArray()
         ];
 
-        if (!string.IsNullOrEmpty(Parser.NameSpace2LookFor))
-            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == Parser.NameSpace2LookFor).ToArray()];
+        var opts = ParserOptionsContext.Current;
 
-        if (!string.IsNullOrEmpty(Parser.Type2LookFor))
+        if (!string.IsNullOrEmpty(opts.NamespaceToLookFor))
+            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == opts.NamespaceToLookFor).ToArray()];
+
+        if (!string.IsNullOrEmpty(opts.TypeToLookFor))
             ret =
             [
                 .. ret.AsValueEnumerable().Where(t =>
-                    t.Name == Parser.Type2LookFor ||
-                    (t.BaseType != null && t.BaseType.Name == Parser.Type2LookFor) ||
-                    IsSubTypeOf(t, Parser.Type2LookFor)
+                    t.Name == opts.TypeToLookFor ||
+                    (t.BaseType != null && t.BaseType.Name == opts.TypeToLookFor) ||
+                    IsSubTypeOf(t, opts.TypeToLookFor)
                 ).ToArray()
             ];
 
-        // Dedupe
         ret = [..ret.AsValueEnumerable().DistinctBy(t => t.FullName).ToArray()];
 
         return ret;

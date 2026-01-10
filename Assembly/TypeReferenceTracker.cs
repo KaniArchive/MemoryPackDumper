@@ -1,4 +1,4 @@
-using MemoryPackDumper.CLI;
+using MemoryPackDumper.Context;
 using dnlib.DotNet;
 using ZLinq;
 
@@ -34,9 +34,10 @@ public static class TypeReferenceTracker
         var typeDef = typeDefOrRef.ResolveTypeDef();
         if (typeDef == null) return;
 
-        if (typeDef.IsEnum && !Parser.MemoryPackEnumsToAdd.AsValueEnumerable().Any(e => e.FullName == typeDef.FullName))
+        var enums = ParserOptionsContext.Current.DiscoveredEnums;
+        if (typeDef.IsEnum && !enums.AsValueEnumerable().Any(e => e.FullName == typeDef.FullName))
         {
-            Parser.MemoryPackEnumsToAdd.Add(typeDef);
+            enums.Add(typeDef);
             return;
         }
 
