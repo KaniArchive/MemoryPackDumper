@@ -1,5 +1,5 @@
 using Kokuban;
-using MemoryPackDumper.CLI;
+using MemoryPackDumper.Context;
 using Microsoft.Extensions.Logging;
 using ZLogger;
 
@@ -87,7 +87,7 @@ public static class Log
 
     public static void Warning(string message)
     {
-        if (Parser.SuppressWarnings) return;
+        if (ParserOptionsContext.Current.SuppressWarnings) return;
 
         EnsureInitialized();
         _logger!.ZLogWarning($"{message}");
@@ -134,7 +134,7 @@ public static partial class LogMessages
 
     public static void LogUnknownSystemType(this ILogger logger, string typeName)
     {
-        if (!Parser.SuppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
+        if (!ParserOptionsContext.Current.SuppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
     }
 
     [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
@@ -145,6 +145,6 @@ public static partial class LogMessages
 
     public static void LogSkippingCall(this ILogger logger, ulong address, string reason)
     {
-        if (!Parser.SuppressWarnings) logger.LogSkippingCallInternal(address, reason);
+        if (!ParserOptionsContext.Current.SuppressWarnings) logger.LogSkippingCallInternal(address, reason);
     }
 }

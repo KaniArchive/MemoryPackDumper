@@ -1,3 +1,4 @@
+using MemoryPackDumper.Context;
 using MemoryPackDumper.Helpers;
 using dnlib.DotNet;
 using ZLinq;
@@ -81,6 +82,7 @@ public static class MemberParser
 
     private static bool ShouldIncludeMember(MemoryPackMember member, bool isPublic)
     {
+        if (ParserOptionsContext.Current.AllowHidden) return !member.IsIgnored;
         return member.IsInclude || (!member.IsIgnored && isPublic);
     }
 
