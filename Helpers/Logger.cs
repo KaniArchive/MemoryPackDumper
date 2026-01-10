@@ -23,11 +23,15 @@ public static class Log
     private static void EnsureInitialized()
     {
         if (_isInitialized) return;
+        Initialize(LogLevel.Information);
+    }
 
+    private static void Initialize(LogLevel minLevel)
+    {
         _loggerFactory = LoggerFactory.Create(logging =>
         {
             logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Information);
+            logging.SetMinimumLevel(minLevel);
 
             logging.AddZLoggerConsole(options =>
             {
@@ -45,7 +49,7 @@ public static class Log
             });
         });
 
-        _logger = _loggerFactory.CreateLogger("FbsDumper");
+        _logger = _loggerFactory.CreateLogger("MemoryPackDumper");
         _isInitialized = true;
     }
 
@@ -98,30 +102,7 @@ public static class Log
     public static void EnableDebugLogging()
     {
         if (_isInitialized) Shutdown();
-
-        _loggerFactory = LoggerFactory.Create(logging =>
-        {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Debug);
-
-            logging.AddZLoggerConsole(options =>
-            {
-                options.UsePlainTextFormatter(formatter =>
-                {
-                    formatter.SetPrefixFormatter($"{0} {1} ",
-                        (in template, in info) =>
-                        {
-                            var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
-                            var logLevel = GetColoredLogLevel(info.LogLevel);
-                            template.Format(timestamp, logLevel);
-                        });
-                });
-                options.LogToStandardErrorThreshold = LogLevel.Error;
-            });
-        });
-
-        _logger = _loggerFactory.CreateLogger("FbsDumper");
-        _isInitialized = true;
+        Initialize(LogLevel.Debug);
     }
 
     public static void Shutdown()
