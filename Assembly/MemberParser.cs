@@ -70,7 +70,8 @@ public static class MemberParser
     private static void ProcessFields(TypeDef typeDef, MemoryPackClass memoryPackClass,
         HashSet<string> discoveredTypes)
     {
-        foreach (var field in typeDef.Fields.AsValueEnumerable().Where(f => !f.IsStatic && !f.IsLiteral))
+        foreach (var field in typeDef.Fields.AsValueEnumerable()
+                     .Where(f => !f.IsStatic && !f.IsLiteral && !IsCompilerGeneratedBackingField(f)))
         {
             var member = CreateMemberFromField(field);
             if (!ShouldIncludeMember(member, field.IsPublic)) continue;
@@ -78,6 +79,12 @@ public static class MemberParser
             memoryPackClass.Members.Add(member);
             TypeReferenceTracker.TrackReferencedType(member.Type, discoveredTypes);
         }
+    }
+
+    private static bool IsCompilerGeneratedBackingField(FieldDef field)
+    {
+        var name = field.Name.String;
+        return name.StartsWith("<") && name.EndsWith(">k__BackingField");
     }
 
     private static bool ShouldIncludeMember(MemoryPackMember member, bool isPublic)
