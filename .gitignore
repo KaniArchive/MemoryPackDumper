@@ -404,3 +404,5 @@ libil2cpp.so
 *.fbs
 
 .idea
+
+_DONT/

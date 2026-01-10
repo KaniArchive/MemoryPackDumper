@@ -1,4 +1,4 @@
-using Mono.Cecil;
+using dnlib.DotNet;
 
 namespace MemoryPackDumper.Assembly;
 
@@ -17,7 +17,7 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public readonly List<MemoryPackMethod> Methods = [];
     public readonly string TypeKeyword = typeKeyword;
     public readonly List<MemoryPackUnion> Unions = [];
-    public TypeReference? BaseTypeReference = null;
+    public ITypeDefOrRef? BaseTypeReference = null;
     public string? GenerateType = null;
     public bool IsRecord = false;
     public List<MemoryPackClass> NestedClasses = [];
@@ -42,12 +42,12 @@ public class MemoryPackUnion(int tag, string typeName)
     public readonly string TypeName = typeName;
 }
 
-public class MemoryPackMember(string name, TypeReference type, bool isField)
+public class MemoryPackMember(string name, TypeSig type, bool isField)
 {
     public readonly List<string> CustomFormatters = [];
     public readonly bool IsField = isField;
     public readonly string Name = name;
-    public readonly TypeReference Type = type;
+    public readonly TypeSig Type = type;
     public bool AllowSerialize = false;
     public bool IsIgnored = false;
     public bool IsInclude = false;
@@ -59,11 +59,11 @@ public class MemoryPackMember(string name, TypeReference type, bool isField)
     public bool SuppressDefaultInitialization = false;
 }
 
-public class MemoryPackEnum(TypeDefinition valueType, string enumName)
+public class MemoryPackEnum(TypeDef valueType, string enumName)
 {
     public readonly string EnumName = enumName;
     public readonly List<MemoryPackEnumField> Fields = [];
-    public readonly TypeDefinition Type = valueType;
+    public readonly TypeDef Type = valueType;
     public string OriginalNamespace = "";
 }
 

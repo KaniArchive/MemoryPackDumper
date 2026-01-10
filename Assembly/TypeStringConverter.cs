@@ -1,5 +1,5 @@
+using dnlib.DotNet;
 using MemoryPackDumper.Helpers;
-using Mono.Cecil;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
@@ -23,23 +23,42 @@ public static class TypeStringConverter
         ["System.Decimal"] = "decimal"
     };
 
-    public static string TypeToString(TypeReference typeRef)
+    public static string TypeToString(TypeSig typeSig)
     {
-        if (typeRef is GenericInstanceType genericInstance) return ConvertGenericType(genericInstance);
+        if (typeSig == null) return "void";
 
-        if (typeRef.IsArray)
+        if (typeSig is GenericInstSig genericInstance) return ConvertGenericType(genericInstance);
+
+        if (typeSig is SZArraySig szArray)
         {
-            var arrayType = typeRef as ArrayType;
-            return TypeToString(arrayType!.ElementType) + "[]";
+            return TypeToString(szArray.Next) + "[]";
+        }
+        
+        if (typeSig is ArraySig array)
+        {
+            return TypeToString(array.Next) + "[]";
         }
 
-        var typeDef = typeRef.Resolve();
-        return typeDef != null ? SystemToStringType(typeDef) : typeRef.Name;
+        var typeDef = typeSig.TryGetTypeDef();
+        return typeDef != null ? SystemToStringType(typeDef) : CheckSystemType(typeSig);
     }
 
-    private static string ConvertGenericType(GenericInstanceType genericInstance)
+    private static string CheckSystemType(TypeSig typeSig)
     {
-        var baseType = genericInstance.ElementType.Name;
+        if (TypeMap.TryGetValue(typeSig.FullName, out var type))
+            return type;
+
+        var name = typeSig.TypeName;
+        var ns = typeSig.Namespace ?? "";
+        if (ns.StartsWith("System"))
+             Log.Global.LogUnknownSystemType(name);
+
+        return name;
+    }
+
+    private static string ConvertGenericType(GenericInstSig genericInstance)
+    {
+        var baseType = genericInstance.GenericType.TypeName;
 
         if (baseType.Contains('`')) baseType = baseType[..baseType.IndexOf('`')];
 
@@ -47,14 +66,16 @@ public static class TypeStringConverter
         return $"{baseType}<{genericArgs}>";
     }
 
-    public static string SystemToStringType(TypeDefinition typeDef)
+    public static string SystemToStringType(TypeDef typeDef)
     {
         var fullName = typeDef.FullName;
         if (TypeMap.TryGetValue(fullName, out var type))
             return type;
 
-        var name = typeDef.Name;
-        if (name.StartsWith("System."))
+        var name = typeDef.Name.String;
+        var ns = typeDef.Namespace?.String ?? "";
+
+        if (ns.StartsWith("System"))
             Log.Global.LogUnknownSystemType(name);
 
         return name;

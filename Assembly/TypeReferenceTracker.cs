@@ -1,14 +1,14 @@
 using MemoryPackDumper.CLI;
-using Mono.Cecil;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
 
 public static class TypeReferenceTracker
 {
-    public static void TrackReferencedType(TypeReference typeRef, HashSet<string> discoveredTypes)
+    public static void TrackReferencedType(TypeSig typeSig, HashSet<string> discoveredTypes)
     {
-        var typeDef = typeRef.Resolve();
+        var typeDef = typeSig.TryGetTypeDef();
         if (typeDef == null)
             return;
 
@@ -20,12 +20,12 @@ public static class TypeReferenceTracker
 
         if (IsMemoryPackable(typeDef)) discoveredTypes.Add(typeDef.FullName);
 
-        if (typeRef is not GenericInstanceType genericInstance) return;
+        if (typeSig is not GenericInstSig genericInstance) return;
         foreach (var genericArg in genericInstance.GenericArguments.AsValueEnumerable())
             TrackReferencedType(genericArg, discoveredTypes);
     }
 
-    private static bool IsMemoryPackable(TypeDefinition typeDef)
+    private static bool IsMemoryPackable(TypeDef typeDef)
     {
         return typeDef.CustomAttributes.AsValueEnumerable().Any(a => a.AttributeType.Name == "MemoryPackableAttribute");
     }

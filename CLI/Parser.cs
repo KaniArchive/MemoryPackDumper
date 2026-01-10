@@ -2,7 +2,7 @@ using MemoryPackDumper.Assembly;
 using MemoryPackDumper.Context;
 using MemoryPackDumper.Helpers;
 using MemoryPackDumper.Services;
-using Mono.Cecil;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.CLI;
@@ -15,7 +15,7 @@ public static class Parser
     private static bool _splitClass;
     public static string? NameSpace2LookFor;
     public static string? Type2LookFor;
-    public static readonly List<TypeDefinition> MemoryPackEnumsToAdd = [];
+    public static readonly List<TypeDef> MemoryPackEnumsToAdd = [];
     public static bool SuppressWarnings;
 
     public static void Execute(string dummyDll, string outputFile, string nameSpace,
@@ -41,12 +41,10 @@ public static class Parser
             Environment.Exit(1);
         }
 
-        var resolver = new DefaultAssemblyResolver();
-        resolver.AddSearchDirectory(_dummyAssemblyDir);
-        var readerParameters = new ReaderParameters
-        {
-            AssemblyResolver = resolver
-        };
+        var assemblyResolver = new AssemblyResolver();
+        assemblyResolver.PreSearchPaths.Add(_dummyAssemblyDir);
+        var moduleContext = new ModuleContext(assemblyResolver);
+        var readerParameters = new ModuleCreationOptions(moduleContext);
 
         Log.Info("Reading game assemblies...");
 
@@ -81,15 +79,15 @@ public static class Parser
             Log.Info($"Processing {dllPaths.Count} DLLs from directory");
         }
 
-        var assemblies = new List<AssemblyDefinition>();
-        var allMemoryPackableTypes = new List<TypeDefinition>();
+        var modules = new List<ModuleDef>();
+        var allMemoryPackableTypes = new List<TypeDef>();
 
         foreach (var dllPath in dllPaths)
             try
             {
-                var assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
-                assemblies.Add(assembly);
-                var types = TypeHelper.GetAllMemoryPackableTypes(assembly.MainModule);
+                var module = ModuleDefMD.Load(dllPath, readerParameters);
+                modules.Add(module);
+                var types = TypeHelper.GetAllMemoryPackableTypes(module);
                 allMemoryPackableTypes.AddRange(types);
                 if (verbose) Log.Debug($"Found {types.Count} MemoryPackable types in {Path.GetFileName(dllPath)}");
             }
@@ -111,10 +109,10 @@ public static class Parser
             if (!processedTypes.Add(typeFullName))
                 continue;
 
-            TypeDefinition? typeDef = null;
-            foreach (var assembly in assemblies)
+            TypeDef? typeDef = null;
+            foreach (var module in modules)
             {
-                typeDef = assembly.MainModule.GetTypes().AsValueEnumerable()
+                typeDef = module.GetTypes().AsValueEnumerable()
                     .FirstOrDefault(t => t.FullName == typeFullName);
                 if (typeDef != null) break;
             }

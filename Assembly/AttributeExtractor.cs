@@ -1,12 +1,11 @@
-using Mono.Cecil;
-using Mono.Collections.Generic;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
 
 public static class AttributeExtractor
 {
-    public static void ExtractClassAttributes(TypeDefinition typeDef, MemoryPackClass memoryPackClass)
+    public static void ExtractClassAttributes(TypeDef typeDef, MemoryPackClass memoryPackClass)
     {
         foreach (var attr in typeDef.CustomAttributes)
             switch (attr.AttributeType.Name)
@@ -38,8 +37,8 @@ public static class AttributeExtractor
         }
         else
         {
-            var layoutProp = attr.Properties.FirstOrDefault(p => p.Name == "SerializeLayout");
-            if (layoutProp.Argument.Value != null)
+            var layoutProp = attr.NamedArguments.FirstOrDefault(p => p.Name == "SerializeLayout");
+            if (layoutProp != null && layoutProp.Argument.Value != null)
                 memoryPackClass.SerializeLayout = EnumMapper.MapSerializeLayout(layoutProp.Argument.Value.ToString()!);
         }
     }
@@ -49,11 +48,11 @@ public static class AttributeExtractor
         if (attr.ConstructorArguments.Count < 2) return;
 
         var tag = Convert.ToInt32(attr.ConstructorArguments[0].Value);
-        if (attr.ConstructorArguments[1].Value is TypeReference typeRef)
-            memoryPackClass.Unions.Add(new MemoryPackUnion(tag, typeRef.Name));
+        if (attr.ConstructorArguments[1].Value is TypeSig typeSig)
+            memoryPackClass.Unions.Add(new MemoryPackUnion(tag, typeSig.ReflectionName));
     }
 
-    public static void ExtractMemberAttributes(Collection<CustomAttribute> attributes, MemoryPackMember member)
+    public static void ExtractMemberAttributes(CustomAttributeCollection attributes, MemoryPackMember member)
     {
         foreach (var attr in attributes)
             switch (attr.AttributeType.Name)
@@ -94,11 +93,11 @@ public static class AttributeExtractor
             }
     }
 
-    public static void ExtractMethodAttributes(MethodDefinition methodDef, MemoryPackMethod method)
+    public static void ExtractMethodAttributes(MethodDef methodDef, MemoryPackMethod method)
     {
         foreach (var attr in methodDef.CustomAttributes.AsValueEnumerable())
         {
-            var attrName = attr.AttributeType.Name;
+            var attrName = attr.AttributeType.Name.String;
 
             if (attrName is "TokenAttribute" or "AddressAttribute" or "FieldOffsetAttribute")
                 continue;

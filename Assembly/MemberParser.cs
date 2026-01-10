@@ -1,12 +1,12 @@
 using MemoryPackDumper.Helpers;
-using Mono.Cecil;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
 
 public static class MemberParser
 {
-    public static MemoryPackClass TypeToMemoryPackClass(TypeDefinition typeDef, HashSet<string> discoveredTypes)
+    public static MemoryPackClass TypeToMemoryPackClass(TypeDef typeDef, HashSet<string> discoveredTypes)
     {
         var className = GetClassName(typeDef);
         var typeKeyword = TypeHelper.GetTypeKeyword(typeDef);
@@ -29,9 +29,9 @@ public static class MemberParser
         return memoryPackClass;
     }
 
-    private static string GetClassName(TypeDefinition typeDef)
+    private static string GetClassName(TypeDef typeDef)
     {
-        var name = typeDef.Name;
+        var name = typeDef.Name.String;
 
         if (!typeDef.HasGenericParameters)
             return name;
@@ -39,18 +39,18 @@ public static class MemberParser
         if (name.Contains('`'))
             name = name[..name.IndexOf('`')];
 
-        var genericParams = typeDef.GenericParameters.AsValueEnumerable().Select(p => p.Name).JoinToString(", ");
+        var genericParams = typeDef.GenericParameters.AsValueEnumerable().Select(p => p.Name.String).JoinToString(", ");
         return $"{name}<{genericParams}>";
     }
 
-    private static bool IsRecordType(TypeDefinition typeDef)
+    private static bool IsRecordType(TypeDef typeDef)
     {
         return typeDef.CustomAttributes.AsValueEnumerable().Any(a =>
                    a.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute") ||
-               typeDef.BaseType?.Name == "Record";
+               (typeDef.BaseType != null && typeDef.BaseType.Name == "Record");
     }
 
-    private static void ProcessProperties(TypeDefinition typeDef, MemoryPackClass memoryPackClass,
+    private static void ProcessProperties(TypeDef typeDef, MemoryPackClass memoryPackClass,
         HashSet<string> discoveredTypes)
     {
         foreach (var property in typeDef.Properties)
@@ -66,7 +66,7 @@ public static class MemberParser
         }
     }
 
-    private static void ProcessFields(TypeDefinition typeDef, MemoryPackClass memoryPackClass,
+    private static void ProcessFields(TypeDef typeDef, MemoryPackClass memoryPackClass,
         HashSet<string> discoveredTypes)
     {
         foreach (var field in typeDef.Fields.AsValueEnumerable().Where(f => !f.IsStatic && !f.IsLiteral))
@@ -100,7 +100,7 @@ public static class MemberParser
         });
     }
 
-    private static void ProcessMethods(TypeDefinition typeDef, MemoryPackClass memoryPackClass)
+    private static void ProcessMethods(TypeDef typeDef, MemoryPackClass memoryPackClass)
     {
         foreach (var method in typeDef.Methods)
         {
@@ -112,31 +112,31 @@ public static class MemberParser
         }
     }
 
-    private static bool IsMemoryPackMethod(MethodDefinition method)
+    private static bool IsMemoryPackMethod(MethodDef method)
     {
         return IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method) ||
                IsOverrideMethod(method);
     }
 
-    private static bool IsOverrideMethod(MethodDefinition method)
+    private static bool IsOverrideMethod(MethodDef method)
     {
         if (method is not { IsVirtual: true, IsNewSlot: false, IsGetter: false, IsSetter: false })
             return false;
 
-        if (method.Name is "Serialize" or "Deserialize")
+        if (method.Name == "Serialize" || method.Name == "Deserialize")
             return false;
 
         return true;
     }
 
-    private static bool IsMemoryPackConstructor(MethodDefinition method)
+    private static bool IsMemoryPackConstructor(MethodDef method)
     {
         return method.IsConstructor &&
                method.CustomAttributes.AsValueEnumerable()
                    .Any(a => a.AttributeType.Name == "MemoryPackConstructorAttribute");
     }
 
-    private static bool IsCallbackMethod(MethodDefinition method)
+    private static bool IsCallbackMethod(MethodDef method)
     {
         return method.CustomAttributes.AsValueEnumerable().Any(a =>
             a.AttributeType.Name == "MemoryPackOnSerializingAttribute" ||
@@ -145,14 +145,15 @@ public static class MemberParser
             a.AttributeType.Name == "MemoryPackOnDeserializedAttribute");
     }
 
-    private static bool IsStaticConstructor(MethodDefinition method)
+    private static bool IsStaticConstructor(MethodDef method)
     {
-        return method is { IsStatic: true, Name: "StaticConstructor" } &&
+        return method is { IsStatic: true } &&
+               method.Name.String == "StaticConstructor" &&
                method.ReturnType.FullName == "System.Void" &&
                method.Parameters.Count == 0;
     }
 
-    private static MemoryPackMethod CreateMethodFromDefinition(MethodDefinition methodDef)
+    private static MemoryPackMethod CreateMethodFromDefinition(MethodDef methodDef)
     {
         var returnType = TypeStringConverter.TypeToString(methodDef.ReturnType);
         var visibility = GetMethodVisibility(methodDef);
@@ -167,14 +168,16 @@ public static class MemberParser
 
         foreach (var param in methodDef.Parameters)
         {
-            var paramType = TypeStringConverter.TypeToString(param.ParameterType);
+             if (param.IsHiddenThisParameter) continue;
+
+            var paramType = TypeStringConverter.TypeToString(param.Type);
             method.Parameters.Add((paramType, param.Name));
         }
 
         return method;
     }
 
-    private static string GetMethodVisibility(MethodDefinition methodDef)
+    private static string GetMethodVisibility(MethodDef methodDef)
     {
         if (methodDef.IsPublic) return "public";
         if (methodDef.IsFamily) return "protected";
@@ -184,10 +187,10 @@ public static class MemberParser
         return "private";
     }
 
-    private static MemoryPackMember CreateMemberFromProperty(PropertyDefinition property)
+    private static MemoryPackMember CreateMemberFromProperty(PropertyDef property)
     {
         var accessorMethod = property.GetMethod ?? property.SetMethod;
-        var member = new MemoryPackMember(property.Name, property.PropertyType, false)
+        var member = new MemoryPackMember(property.Name, property.PropertySig.RetType, false)
         {
             IsPublic = accessorMethod?.IsPublic ?? false
         };
@@ -195,7 +198,7 @@ public static class MemberParser
         return member;
     }
 
-    private static MemoryPackMember CreateMemberFromField(FieldDefinition field)
+    private static MemoryPackMember CreateMemberFromField(FieldDef field)
     {
         var member = new MemoryPackMember(field.Name, field.FieldType, true)
         {
@@ -205,7 +208,7 @@ public static class MemberParser
         return member;
     }
 
-    public static MemoryPackEnum TypeToEnum(TypeDefinition typeDef)
+    public static MemoryPackEnum TypeToEnum(TypeDef typeDef)
     {
         var underlyingType = GetEnumUnderlyingType(typeDef);
         var memoryPackEnum = new MemoryPackEnum(underlyingType, typeDef.Name)
@@ -215,23 +218,26 @@ public static class MemberParser
 
         foreach (var fieldDef in typeDef.Fields.AsValueEnumerable().Where(f => f.HasConstant))
         {
-            var enumField = new MemoryPackEnumField(fieldDef.Name, Convert.ToInt64(fieldDef.Constant));
+            var enumField = new MemoryPackEnumField(fieldDef.Name, Convert.ToInt64(fieldDef.Constant.Value));
             memoryPackEnum.Fields.Add(enumField);
         }
 
         return memoryPackEnum;
     }
 
-    private static TypeDefinition GetEnumUnderlyingType(TypeDefinition typeDef)
+    private static TypeDef GetEnumUnderlyingType(TypeDef typeDef)
     {
-        var underlyingType = typeDef.Fields.FirstOrDefault(f => f.Name == "value__")?.FieldType.Resolve();
+        var underlyingType = typeDef.Fields.FirstOrDefault(f => f.Name == "value__")?.FieldType.TryGetTypeDef();
         if (underlyingType != null) return underlyingType;
 
         Log.Warning($"Could not determine underlying type for enum {typeDef.FullName}");
-        return typeDef.Module.TypeSystem.Int32.Resolve();
+        // dnlib doesn't have a direct TypeSystem accessor from ModuleDef in the same way, need access to a known type or context.
+        // Assuming int32 as fallback if not found.
+        // But ModuleDef has CorLibTypes.
+        return typeDef.Module.CorLibTypes.Int32.TypeDefOrRef.ResolveTypeDef();
     }
 
-    private static void ProcessNestedTypes(TypeDefinition typeDef, MemoryPackClass memoryPackClass,
+    private static void ProcessNestedTypes(TypeDef typeDef, MemoryPackClass memoryPackClass,
         HashSet<string> discoveredTypes)
     {
         if (!typeDef.HasNestedTypes) return;
@@ -249,16 +255,16 @@ public static class MemberParser
         }
     }
 
-    private static bool IsAutoGeneratedFormatter(TypeDefinition nestedType, string parentClassName)
+    private static bool IsAutoGeneratedFormatter(TypeDef nestedType, string parentClassName)
     {
         if (nestedType.BaseType == null) return false;
 
-        var baseTypeName = nestedType.BaseType.Name;
+        var baseTypeName = nestedType.BaseType.Name.String;
         if (!baseTypeName.StartsWith("MemoryPackFormatter")) return false;
 
-        if (nestedType.BaseType is GenericInstanceType genericBase && genericBase.GenericArguments.Count > 0)
+        if (nestedType.BaseType is TypeSpec typeSpec && typeSpec.TypeSig is GenericInstSig genericBase && genericBase.GenericArguments.Count > 0)
         {
-            var formattedTypeName = genericBase.GenericArguments[0].Name;
+            var formattedTypeName = genericBase.GenericArguments[0].TypeName;
             var parentBaseName = parentClassName.Contains('<')
                 ? parentClassName[..parentClassName.IndexOf('<')]
                 : parentClassName;
