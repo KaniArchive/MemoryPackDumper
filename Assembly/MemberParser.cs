@@ -210,8 +210,8 @@ public static class MemberParser
 
     public static MemoryPackEnum TypeToEnum(TypeDef typeDef)
     {
-        var underlyingType = GetEnumUnderlyingType(typeDef);
-        var memoryPackEnum = new MemoryPackEnum(underlyingType, typeDef.Name)
+        var underlyingTypeName = GetEnumUnderlyingTypeName(typeDef);
+        var memoryPackEnum = new MemoryPackEnum(underlyingTypeName, typeDef.Name)
         {
             OriginalNamespace = typeDef.Namespace ?? ""
         };
@@ -225,16 +225,26 @@ public static class MemberParser
         return memoryPackEnum;
     }
 
-    private static TypeDef GetEnumUnderlyingType(TypeDef typeDef)
+    private static string GetEnumUnderlyingTypeName(TypeDef typeDef)
     {
-        var underlyingType = typeDef.Fields.FirstOrDefault(f => f.Name == "value__")?.FieldType.TryGetTypeDef();
-        if (underlyingType != null) return underlyingType;
+        var valueField = typeDef.Fields.FirstOrDefault(f => f.Name == "value__");
+        if (valueField != null)
+        {
+            return valueField.FieldType.FullName switch
+            {
+                "System.Byte" => "byte",
+                "System.SByte" => "sbyte",
+                "System.Int16" => "short",
+                "System.UInt16" => "ushort",
+                "System.Int32" => "int",
+                "System.UInt32" => "uint",
+                "System.Int64" => "long",
+                "System.UInt64" => "ulong",
+                _ => "int"
+            };
+        }
 
-        Log.Warning($"Could not determine underlying type for enum {typeDef.FullName}");
-        // dnlib doesn't have a direct TypeSystem accessor from ModuleDef in the same way, need access to a known type or context.
-        // Assuming int32 as fallback if not found.
-        // But ModuleDef has CorLibTypes.
-        return typeDef.Module.CorLibTypes.Int32.TypeDefOrRef.ResolveTypeDef();
+        return "int";
     }
 
     private static void ProcessNestedTypes(TypeDef typeDef, MemoryPackClass memoryPackClass,

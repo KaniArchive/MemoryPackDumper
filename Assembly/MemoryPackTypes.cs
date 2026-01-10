@@ -59,11 +59,11 @@ public class MemoryPackMember(string name, TypeSig type, bool isField)
     public bool SuppressDefaultInitialization = false;
 }
 
-public class MemoryPackEnum(TypeDef valueType, string enumName)
+public class MemoryPackEnum(string underlyingType, string enumName)
 {
     public readonly string EnumName = enumName;
     public readonly List<MemoryPackEnumField> Fields = [];
-    public readonly TypeDef Type = valueType;
+    public readonly string UnderlyingType = underlyingType;
     public string OriginalNamespace = "";
 }
 
