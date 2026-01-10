@@ -1,18 +1,18 @@
 using MemoryPackDumper.CLI;
-using Mono.Cecil;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
 
 internal static class TypeHelper
 {
-    public static List<TypeDefinition> GetAllMemoryPackableTypes(ModuleDefinition module)
+    public static List<TypeDef> GetAllMemoryPackableTypes(ModuleDef module)
     {
-        List<TypeDefinition> ret =
+        List<TypeDef> ret =
         [
             .. module.GetTypes().AsValueEnumerable().Where(t =>
                 t.CustomAttributes.AsValueEnumerable().Any(a => a.AttributeType.Name == "MemoryPackableAttribute") ||
-                t.Interfaces.AsValueEnumerable().Any(i => i.InterfaceType.Name == "IMemoryPackFormatterRegister")
+                t.Interfaces.AsValueEnumerable().Any(i => i.Interface.Name == "IMemoryPackFormatterRegister")
             ).ToArray()
         ];
 
@@ -24,7 +24,7 @@ internal static class TypeHelper
             [
                 .. ret.AsValueEnumerable().Where(t =>
                     t.Name == Parser.Type2LookFor ||
-                    t.BaseType.Name == Parser.Type2LookFor ||
+                    (t.BaseType != null && t.BaseType.Name == Parser.Type2LookFor) ||
                     IsSubTypeOf(t, Parser.Type2LookFor)
                 ).ToArray()
             ];
@@ -35,7 +35,7 @@ internal static class TypeHelper
         return ret;
     }
 
-    public static string GetTypeKeyword(TypeDefinition typeDef)
+    public static string GetTypeKeyword(TypeDef typeDef)
     {
         if (typeDef.IsInterface)
             return "interface";
@@ -48,57 +48,78 @@ internal static class TypeHelper
         return "";
     }
 
-    public static string GetBaseType(TypeDefinition typeDef)
+    public static string GetBaseType(TypeDef typeDef)
     {
         if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object" ||
             typeDef.BaseType.FullName == "System.ValueType" || typeDef.BaseType.FullName == "System.Enum") return "";
-        if (typeDef.BaseType is GenericInstanceType genericBase)
-            return TypeStringConverter.TypeToString(genericBase);
+        
+        if (typeDef.BaseType is TypeSpec typeSpec && typeSpec.TypeSig is GenericInstSig genericSig)
+             return TypeStringConverter.TypeToString(genericSig);
 
-        var baseName = typeDef.BaseType.Name;
+        var baseName = typeDef.BaseType.Name.String;
         if (baseName.Contains('`'))
             baseName = baseName[..baseName.IndexOf('`')];
 
         return baseName;
     }
 
-    public static void CollectNamespaces(TypeReference typeRef, HashSet<string> namespaces)
+    public static void CollectNamespaces(TypeSig typeSig, HashSet<string> namespaces)
     {
-        switch (typeRef)
+        switch (typeSig)
         {
-            case GenericInstanceType genericType:
+            case GenericInstSig genericType:
             {
-                var elementType = genericType.ElementType.Resolve();
+                var elementType = genericType.GenericType.ToTypeDefOrRef().ResolveTypeDef();
                 AddNamespaceIfNeeded(elementType, namespaces);
 
                 foreach (var arg in genericType.GenericArguments)
                     CollectNamespaces(arg, namespaces);
                 break;
             }
-            case ArrayType arrayType:
-                CollectNamespaces(arrayType.ElementType, namespaces);
+            case SZArraySig szArrayType:
+                CollectNamespaces(szArrayType.Next, namespaces);
+                break;
+            case ArraySig arrayType:
+                CollectNamespaces(arrayType.Next, namespaces);
                 break;
             default:
             {
-                var resolved = typeRef.Resolve();
+                var resolved = typeSig.TryGetTypeDef();
                 AddNamespaceIfNeeded(resolved, namespaces);
                 break;
             }
         }
     }
 
-    private static void AddNamespaceIfNeeded(TypeDefinition? typeDef, HashSet<string> namespaces)
+    public static void CollectNamespaces(ITypeDefOrRef? typeRef, HashSet<string> namespaces)
     {
-        if (typeDef?.Namespace == null) return;
+        if (typeRef == null) return;
 
-        if (typeDef.Namespace.StartsWith("System."))
+        if (typeRef is TypeSpec typeSpec)
         {
-            namespaces.Add(typeDef.Namespace);
+            CollectNamespaces(typeSpec.TypeSig, namespaces);
             return;
         }
 
-        if (typeDef.Namespace != "UnityEngine") return;
-        switch (typeDef.Name)
+        var resolved = typeRef.ResolveTypeDef();
+        AddNamespaceIfNeeded(resolved, namespaces);
+    }
+
+    private static void AddNamespaceIfNeeded(TypeDef? typeDef, HashSet<string> namespaces)
+    {
+        if (typeDef == null) return;
+        var ns = typeDef.Namespace?.String;
+        if (string.IsNullOrEmpty(ns)) return;
+
+        if (ns.StartsWith("System."))
+        {
+            namespaces.Add(ns);
+            return;
+        }
+
+        if (ns != "UnityEngine") return;
+        var name = typeDef.Name?.String;
+        switch (name)
         {
             case "Vector2":
             case "Vector3":
@@ -110,48 +131,67 @@ internal static class TypeHelper
         }
     }
 
-    public static void CollectNamespacesForSplitFile(TypeReference typeRef, HashSet<string> namespaces,
+    public static void CollectNamespacesForSplitFile(TypeSig typeSig, HashSet<string> namespaces,
         string currentFileNamespace)
     {
-        switch (typeRef)
+        switch (typeSig)
         {
-            case GenericInstanceType genericType:
+            case GenericInstSig genericType:
             {
-                var elementType = genericType.ElementType.Resolve();
+                var elementType = genericType.GenericType.ToTypeDefOrRef().ResolveTypeDef();
                 AddNamespaceForSplitFile(elementType, namespaces, currentFileNamespace);
 
                 foreach (var arg in genericType.GenericArguments)
                     CollectNamespacesForSplitFile(arg, namespaces, currentFileNamespace);
                 break;
             }
-            case ArrayType arrayType:
-                CollectNamespacesForSplitFile(arrayType.ElementType, namespaces, currentFileNamespace);
+            case SZArraySig szArrayType:
+                CollectNamespacesForSplitFile(szArrayType.Next, namespaces, currentFileNamespace);
+                break;
+            case ArraySig arrayType:
+                CollectNamespacesForSplitFile(arrayType.Next, namespaces, currentFileNamespace);
                 break;
             default:
             {
-                var resolved = typeRef.Resolve();
+                var resolved = typeSig.TryGetTypeDef();
                 AddNamespaceForSplitFile(resolved, namespaces, currentFileNamespace);
                 break;
             }
         }
     }
 
-    private static void AddNamespaceForSplitFile(TypeDefinition? typeDef, HashSet<string> namespaces,
+    public static void CollectNamespacesForSplitFile(ITypeDefOrRef? typeRef, HashSet<string> namespaces,
         string currentFileNamespace)
     {
-        if (typeDef?.Namespace == null) return;
+        if (typeRef == null) return;
 
-        if (typeDef.Namespace == "System" || typeDef.Namespace.StartsWith("System.") ||
-            typeDef.Namespace == "UnityEngine")
+        if (typeRef is TypeSpec typeSpec)
+        {
+            CollectNamespacesForSplitFile(typeSpec.TypeSig, namespaces, currentFileNamespace);
+            return;
+        }
+
+        var resolved = typeRef.ResolveTypeDef();
+        AddNamespaceForSplitFile(resolved, namespaces, currentFileNamespace);
+    }
+
+    private static void AddNamespaceForSplitFile(TypeDef? typeDef, HashSet<string> namespaces,
+        string currentFileNamespace)
+    {
+        if (typeDef == null) return;
+        var ns = typeDef.Namespace?.String;
+        if (string.IsNullOrEmpty(ns)) return;
+
+        if (ns == "System" || ns.StartsWith("System.") || ns == "UnityEngine")
         {
             AddNamespaceIfNeeded(typeDef, namespaces);
             return;
         }
 
-        if (typeDef.Namespace != currentFileNamespace) namespaces.Add(typeDef.Namespace);
+        if (ns != currentFileNamespace) namespaces.Add(ns);
     }
 
-    private static bool IsSubTypeOf(TypeDefinition typeToCheck, string ancestorTypeName)
+    private static bool IsSubTypeOf(TypeDef typeToCheck, string ancestorTypeName)
     {
         var currentBaseRef = typeToCheck.BaseType;
 
@@ -160,7 +200,7 @@ internal static class TypeHelper
             if (currentBaseRef.Name == ancestorTypeName)
                 return true;
 
-            var currentBaseDef = currentBaseRef.Resolve();
+            var currentBaseDef = currentBaseRef.ResolveTypeDef();
 
             if (currentBaseDef == null)
                 break;
