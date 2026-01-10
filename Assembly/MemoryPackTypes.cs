@@ -20,7 +20,7 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public ITypeDefOrRef? BaseTypeReference = null;
     public string? GenerateType = null;
     public bool IsRecord = false;
-    public List<MemoryPackClass> NestedClasses = [];
+    public readonly List<MemoryPackClass> NestedClasses = [];
     public string OriginalNamespace = "";
     public string? SerializeLayout = null;
 }

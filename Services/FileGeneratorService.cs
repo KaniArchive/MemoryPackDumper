@@ -27,9 +27,7 @@ public static class FileGeneratorService
         stringWriter.AppendLine();
 
         if (!string.IsNullOrEmpty(context.customNamespace))
-        {
             stringWriter.AppendFormat($"namespace {context.customNamespace};\n\n");
-        }
 
         var indent = string.IsNullOrEmpty(context.customNamespace) ? "" : null;
 

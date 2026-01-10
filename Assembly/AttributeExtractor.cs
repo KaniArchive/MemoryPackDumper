@@ -38,7 +38,7 @@ public static class AttributeExtractor
         else
         {
             var layoutProp = attr.NamedArguments.FirstOrDefault(p => p.Name == "SerializeLayout");
-            if (layoutProp != null && layoutProp.Argument.Value != null)
+            if (layoutProp is { Argument.Value: not null })
                 memoryPackClass.SerializeLayout = EnumMapper.MapSerializeLayout(layoutProp.Argument.Value.ToString()!);
         }
     }

@@ -28,7 +28,7 @@ public static class TypeStringConverter
         ["System.UIntPtr"] = "nuint"
     }.ToFrozenDictionary();
 
-    public static string TypeToString(TypeSig typeSig)
+    public static string TypeToString(TypeSig? typeSig)
     {
         if (typeSig == null) return "void";
 
@@ -48,10 +48,5 @@ public static class TypeStringConverter
 
         var genericArgs = genericInstance.GenericArguments.AsValueEnumerable().Select(TypeToString).JoinToString(", ");
         return $"{baseType}<{genericArgs}>";
-    }
-
-    public static string SystemToStringType(TypeDef typeDef)
-    {
-        return TypeMap.GetValueOrDefault(typeDef.FullName, typeDef.Name.String);
     }
 }
