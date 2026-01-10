@@ -112,8 +112,7 @@ public static class Parser
             TypeDef? typeDef = null;
             foreach (var module in modules)
             {
-                typeDef = module.GetTypes().AsValueEnumerable()
-                    .FirstOrDefault(t => t.FullName == typeFullName);
+                typeDef = module.Find(typeFullName, false);
                 if (typeDef != null) break;
             }
 
