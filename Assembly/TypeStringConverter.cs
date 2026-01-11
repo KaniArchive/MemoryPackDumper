@@ -1,12 +1,12 @@
-using MemoryPackDumper.Helpers;
-using Mono.Cecil;
+using System.Collections.Frozen;
+using dnlib.DotNet;
 using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
 
 public static class TypeStringConverter
 {
-    private static readonly Dictionary<string, string> TypeMap = new()
+    private static readonly FrozenDictionary<string, string> TypeMap = new Dictionary<string, string>
     {
         ["System.String"] = "string",
         ["System.Int16"] = "short",
@@ -20,43 +20,33 @@ public static class TypeStringConverter
         ["System.Double"] = "double",
         ["System.SByte"] = "sbyte",
         ["System.Byte"] = "byte",
-        ["System.Decimal"] = "decimal"
-    };
+        ["System.Decimal"] = "decimal",
+        ["System.Object"] = "object",
+        ["System.Void"] = "void",
+        ["System.Char"] = "char",
+        ["System.IntPtr"] = "nint",
+        ["System.UIntPtr"] = "nuint"
+    }.ToFrozenDictionary();
 
-    public static string TypeToString(TypeReference typeRef)
+    public static string TypeToString(TypeSig? typeSig)
     {
-        if (typeRef is GenericInstanceType genericInstance) return ConvertGenericType(genericInstance);
+        if (typeSig == null) return "void";
 
-        if (typeRef.IsArray)
+        return typeSig switch
         {
-            var arrayType = typeRef as ArrayType;
-            return TypeToString(arrayType!.ElementType) + "[]";
-        }
-
-        var typeDef = typeRef.Resolve();
-        return typeDef != null ? SystemToStringType(typeDef) : typeRef.Name;
+            GenericInstSig genericInstance => ConvertGenericType(genericInstance),
+            SZArraySig szArray => TypeToString(szArray.Next) + "[]",
+            ArraySig array => TypeToString(array.Next) + "[]",
+            _ => TypeMap.GetValueOrDefault(typeSig.FullName, typeSig.TypeName)
+        };
     }
 
-    private static string ConvertGenericType(GenericInstanceType genericInstance)
+    private static string ConvertGenericType(GenericInstSig genericInstance)
     {
-        var baseType = genericInstance.ElementType.Name;
-
+        var baseType = genericInstance.GenericType.TypeName;
         if (baseType.Contains('`')) baseType = baseType[..baseType.IndexOf('`')];
 
         var genericArgs = genericInstance.GenericArguments.AsValueEnumerable().Select(TypeToString).JoinToString(", ");
         return $"{baseType}<{genericArgs}>";
-    }
-
-    public static string SystemToStringType(TypeDefinition typeDef)
-    {
-        var fullName = typeDef.FullName;
-        if (TypeMap.TryGetValue(fullName, out var type))
-            return type;
-
-        var name = typeDef.Name;
-        if (name.StartsWith("System."))
-            Log.Global.LogUnknownSystemType(name);
-
-        return name;
     }
 }

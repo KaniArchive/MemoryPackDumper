@@ -1,60 +1,48 @@
+using dnlib.DotNet;
 using MemoryPackDumper.Assembly;
 using MemoryPackDumper.Context;
 using MemoryPackDumper.Helpers;
 using MemoryPackDumper.Services;
-using Mono.Cecil;
 using ZLinq;
 
 namespace MemoryPackDumper.CLI;
 
 public static class Parser
 {
-    private static string _dummyAssemblyDir = "DummyDll";
-    private static string _outputFileName = "MemoryPack.cs";
-    private static string? _customNameSpace = "MemoryPackData";
-    private static bool _splitClass;
-    public static string? NameSpace2LookFor;
-    public static string? Type2LookFor;
-    public static readonly List<TypeDefinition> MemoryPackEnumsToAdd = [];
-    public static bool SuppressWarnings;
-
     public static void Execute(string dummyDll, string outputFile, string nameSpace,
-        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool verbose,
-        bool suppressWarnings)
+        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool allowHidden,
+        bool verbose, bool suppressWarnings)
     {
+        ParserOptionsContext.current = new ParserOptionsContext
+        {
+            suppressWarnings = suppressWarnings,
+            allowHidden = allowHidden,
+            namespaceToLookFor = namespaceToLookFor,
+            typeToLookFor = type2LookFor
+        };
+
         if (verbose) Log.EnableDebugLogging();
 
-        SuppressWarnings = suppressWarnings;
-
-        _dummyAssemblyDir = dummyDll;
-        _outputFileName = outputFile;
-        _customNameSpace = nameSpace;
-        _splitClass = splitClass;
-        NameSpace2LookFor = namespaceToLookFor;
-        Type2LookFor = type2LookFor;
-
-        if (!Directory.Exists(_dummyAssemblyDir))
+        if (!Directory.Exists(dummyDll))
         {
-            Log.Global.LogDummyDirNotFound(_dummyAssemblyDir);
+            Log.Global.LogDummyDirNotFound(dummyDll);
             Log.Error("Please provide a valid path using -dummydll or -d.");
             Log.Shutdown();
             Environment.Exit(1);
         }
 
-        var resolver = new DefaultAssemblyResolver();
-        resolver.AddSearchDirectory(_dummyAssemblyDir);
-        var readerParameters = new ReaderParameters
-        {
-            AssemblyResolver = resolver
-        };
+        var assemblyResolver = new AssemblyResolver();
+        assemblyResolver.PreSearchPaths.Add(dummyDll);
+        var moduleContext = new ModuleContext(assemblyResolver);
+        var readerParameters = new ModuleCreationOptions(moduleContext);
 
         Log.Info("Reading game assemblies...");
 
         List<string> dllPaths = !string.IsNullOrEmpty(targetDll)
-            ? [Path.Combine(_dummyAssemblyDir, targetDll)]
+            ? [Path.Combine(dummyDll, targetDll)]
             :
             [
-                .. Directory.GetFiles(_dummyAssemblyDir, "*.dll")
+                .. Directory.GetFiles(dummyDll, "*.dll")
                     .AsValueEnumerable()
                     .Where(path =>
                     {
@@ -69,7 +57,7 @@ public static class Parser
         {
             if (!File.Exists(dllPaths[0]))
             {
-                Log.Global.LogFileNotFound(targetDll, _dummyAssemblyDir);
+                Log.Global.LogFileNotFound(targetDll, dummyDll);
                 Log.Shutdown();
                 Environment.Exit(1);
             }
@@ -81,15 +69,15 @@ public static class Parser
             Log.Info($"Processing {dllPaths.Count} DLLs from directory");
         }
 
-        var assemblies = new List<AssemblyDefinition>();
-        var allMemoryPackableTypes = new List<TypeDefinition>();
+        var modules = new List<ModuleDef>();
+        var allMemoryPackableTypes = new List<TypeDef>();
 
         foreach (var dllPath in dllPaths)
             try
             {
-                var assembly = AssemblyDefinition.ReadAssembly(dllPath, readerParameters);
-                assemblies.Add(assembly);
-                var types = TypeHelper.GetAllMemoryPackableTypes(assembly.MainModule);
+                var module = ModuleDefMD.Load(dllPath, readerParameters);
+                modules.Add(module);
+                var types = TypeHelper.GetAllMemoryPackableTypes(module);
                 allMemoryPackableTypes.AddRange(types);
                 if (verbose) Log.Debug($"Found {types.Count} MemoryPackable types in {Path.GetFileName(dllPath)}");
             }
@@ -111,11 +99,10 @@ public static class Parser
             if (!processedTypes.Add(typeFullName))
                 continue;
 
-            TypeDefinition? typeDef = null;
-            foreach (var assembly in assemblies)
+            TypeDef? typeDef = null;
+            foreach (var module in modules)
             {
-                typeDef = assembly.MainModule.GetTypes().AsValueEnumerable()
-                    .FirstOrDefault(t => t.FullName == typeFullName);
+                typeDef = module.Find(typeFullName, false);
                 if (typeDef != null) break;
             }
 
@@ -133,19 +120,20 @@ public static class Parser
         }
 
         Log.Info("Adding enums...");
-        foreach (var fEnum in MemoryPackEnumsToAdd.AsValueEnumerable().Select(MemberParser.TypeToEnum))
+        foreach (var fEnum in ParserOptionsContext.current.discoveredEnums.AsValueEnumerable()
+                     .Select(MemberParser.TypeToEnum))
             schema.Enums.Add(fEnum);
 
-        var context = new CodeGenerationContext(_customNameSpace, _splitClass, _outputFileName);
+        var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
 
-        if (_splitClass)
+        if (splitClass)
         {
-            Log.Info($"Writing split C# files to {_outputFileName}/...");
+            Log.Info($"Writing split C# files to {outputFile}/...");
             FileGeneratorService.WriteSplitFiles(schema, context);
         }
         else
         {
-            Log.Info($"Writing C# code to {_outputFileName}...");
+            Log.Info($"Writing C# code to {outputFile}...");
             FileGeneratorService.WriteSingleFile(schema, context);
         }
 

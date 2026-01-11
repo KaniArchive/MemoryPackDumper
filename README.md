@@ -57,6 +57,7 @@ dotnet build
 - `-o, --output-file`: Specifies the output file or directory when using --split-class (Default: MemoryPack.cs)
 - `-n, --namespace`: Specifies the C# namespace for generated classes (Default: MemoryPackData)
 - `-sc, --split-class`: Split classes into individual files organized by namespace folders
+- `-ah, --allow-hidden`: Include private, protected, and internal members in output
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for (filters types)
 - `-tl, --type-to-look-for`: Specifies the type to look for (filters types)
 - `-t, --target-dll`: Specifies a specific DLL to process

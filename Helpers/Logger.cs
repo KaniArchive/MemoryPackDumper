@@ -1,5 +1,5 @@
 using Kokuban;
-using MemoryPackDumper.CLI;
+using MemoryPackDumper.Context;
 using Microsoft.Extensions.Logging;
 using ZLogger;
 
@@ -23,11 +23,15 @@ public static class Log
     private static void EnsureInitialized()
     {
         if (_isInitialized) return;
+        Initialize(LogLevel.Information);
+    }
 
+    private static void Initialize(LogLevel minLevel)
+    {
         _loggerFactory = LoggerFactory.Create(logging =>
         {
             logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Information);
+            logging.SetMinimumLevel(minLevel);
 
             logging.AddZLoggerConsole(options =>
             {
@@ -45,7 +49,7 @@ public static class Log
             });
         });
 
-        _logger = _loggerFactory.CreateLogger("FbsDumper");
+        _logger = _loggerFactory.CreateLogger("MemoryPackDumper");
         _isInitialized = true;
     }
 
@@ -83,7 +87,7 @@ public static class Log
 
     public static void Warning(string message)
     {
-        if (Parser.SuppressWarnings) return;
+        if (ParserOptionsContext.current.suppressWarnings) return;
 
         EnsureInitialized();
         _logger!.ZLogWarning($"{message}");
@@ -98,30 +102,7 @@ public static class Log
     public static void EnableDebugLogging()
     {
         if (_isInitialized) Shutdown();
-
-        _loggerFactory = LoggerFactory.Create(logging =>
-        {
-            logging.ClearProviders();
-            logging.SetMinimumLevel(LogLevel.Debug);
-
-            logging.AddZLoggerConsole(options =>
-            {
-                options.UsePlainTextFormatter(formatter =>
-                {
-                    formatter.SetPrefixFormatter($"{0} {1} ",
-                        (in template, in info) =>
-                        {
-                            var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
-                            var logLevel = GetColoredLogLevel(info.LogLevel);
-                            template.Format(timestamp, logLevel);
-                        });
-                });
-                options.LogToStandardErrorThreshold = LogLevel.Error;
-            });
-        });
-
-        _logger = _loggerFactory.CreateLogger("FbsDumper");
-        _isInitialized = true;
+        Initialize(LogLevel.Debug);
     }
 
     public static void Shutdown()
@@ -153,7 +134,7 @@ public static partial class LogMessages
 
     public static void LogUnknownSystemType(this ILogger logger, string typeName)
     {
-        if (!Parser.SuppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
+        if (!ParserOptionsContext.current.suppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
     }
 
     [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
@@ -164,6 +145,6 @@ public static partial class LogMessages
 
     public static void LogSkippingCall(this ILogger logger, ulong address, string reason)
     {
-        if (!Parser.SuppressWarnings) logger.LogSkippingCallInternal(address, reason);
+        if (!ParserOptionsContext.current.suppressWarnings) logger.LogSkippingCallInternal(address, reason);
     }
 }
