@@ -123,28 +123,6 @@ public static partial class LogMessages
     [ZLoggerMessage(LogLevel.Error, "Dummy assembly directory '{path}' not found.")]
     public static partial void LogDummyDirNotFound(this ILogger logger, string path);
 
-    [ZLoggerMessage(LogLevel.Error, "libil2cpp.so path '{path}' not found.")]
-    public static partial void LogGameAssemblyNotFound(this ILogger logger, string path);
-
     [ZLoggerMessage(LogLevel.Error, "{fileName} not found in '{directory}'.")]
     public static partial void LogFileNotFound(this ILogger logger, string fileName, string directory);
-
-    [ZLoggerMessage(LogLevel.Warning, "unknown system type {typeName}")]
-    private static partial void LogUnknownSystemTypeInternal(this ILogger logger, string typeName);
-
-    public static void LogUnknownSystemType(this ILogger logger, string typeName)
-    {
-        if (!ParserOptionsContext.current.suppressWarnings) logger.LogUnknownSystemTypeInternal(typeName);
-    }
-
-    [ZLoggerMessage(LogLevel.Debug, "\t0x{address:X}: {mnemonic} {operand}")]
-    public static partial void LogInstruction(this ILogger logger, ulong address, string mnemonic, string? operand);
-
-    [ZLoggerMessage(LogLevel.Warning, "Skipping call for 0x{address:X} because {reason}")]
-    private static partial void LogSkippingCallInternal(this ILogger logger, ulong address, string reason);
-
-    public static void LogSkippingCall(this ILogger logger, ulong address, string reason)
-    {
-        if (!ParserOptionsContext.current.suppressWarnings) logger.LogSkippingCallInternal(address, reason);
-    }
 }
