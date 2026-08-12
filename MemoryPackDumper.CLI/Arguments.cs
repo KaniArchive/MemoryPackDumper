@@ -25,8 +25,7 @@ public static class Args
         bool splitClass = false,
         bool allowHidden = false,
         bool verbose = false,
-        bool suppressWarnings = false)
-    {
-        Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass, allowHidden, verbose, suppressWarnings);
-    }
+        bool suppressWarnings = false) =>
+        Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
+            allowHidden, verbose, suppressWarnings);
 }

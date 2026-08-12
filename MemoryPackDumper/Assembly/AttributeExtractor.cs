@@ -107,10 +107,8 @@ public static class AttributeExtractor
         }
     }
 
-    private static string GetAttributeShortName(string attributeName)
-    {
-        return attributeName.EndsWith("Attribute")
+    private static string GetAttributeShortName(string attributeName) =>
+        attributeName.EndsWith("Attribute")
             ? attributeName[..^"Attribute".Length]
             : attributeName;
-    }
 }

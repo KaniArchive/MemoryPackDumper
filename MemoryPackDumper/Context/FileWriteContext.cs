@@ -1,11 +1,11 @@
 namespace MemoryPackDumper.Context;
 
 public readonly record struct FileWriteContext(
-    string filePath,
-    string? @namespace,
-    string? indent
+    string FilePath,
+    string? Namespace,
+    string? Indent
 )
 {
-    public bool hasNamespace => !string.IsNullOrEmpty(@namespace);
-    public string actualIndent => indent ?? "";
+    public bool HasNamespace => !string.IsNullOrEmpty(Namespace);
+    public string ActualIndent => Indent ?? "";
 }

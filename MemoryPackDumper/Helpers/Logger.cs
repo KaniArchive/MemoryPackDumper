@@ -53,9 +53,8 @@ public static class Log
         _isInitialized = true;
     }
 
-    private static string GetColoredLogLevel(LogLevel logLevel)
-    {
-        return logLevel switch
+    private static string GetColoredLogLevel(LogLevel logLevel) =>
+        logLevel switch
         {
             LogLevel.Trace => Chalk.Magenta + "[TRC]",
             LogLevel.Debug => Chalk.Cyan + "[DBG]",
@@ -65,7 +64,6 @@ public static class Log
             LogLevel.Critical => Chalk.BgRed.White + "[CRT]",
             _ => Chalk.White + "[???]"
         };
-    }
 
     public static void Info(string message)
     {
@@ -87,7 +85,7 @@ public static class Log
 
     public static void Warning(string message)
     {
-        if (ParserOptionsContext.current.suppressWarnings) return;
+        if (ParserOptionsContext.Current.SuppressWarnings) return;
 
         EnsureInitialized();
         _logger!.ZLogWarning($"{message}");

@@ -32,7 +32,7 @@ public static class TypeReferenceTracker
         var typeDef = typeDefOrRef?.ResolveTypeDef();
         if (typeDef == null) return;
 
-        var enums = ParserOptionsContext.current.discoveredEnums;
+        var enums = ParserOptionsContext.Current.DiscoveredEnums;
         if (typeDef.IsEnum && !enums.AsValueEnumerable().Any(e => e.FullName == typeDef.FullName))
         {
             enums.Add(typeDef);
@@ -43,8 +43,6 @@ public static class TypeReferenceTracker
             discoveredTypes.Add(typeDef.FullName);
     }
 
-    private static bool IsMemoryPackable(TypeDef typeDef)
-    {
-        return typeDef.CustomAttributes.AsValueEnumerable().Any(a => a.AttributeType.Name == "MemoryPackableAttribute");
-    }
+    private static bool IsMemoryPackable(TypeDef typeDef) => typeDef.CustomAttributes.AsValueEnumerable()
+        .Any(a => a.AttributeType.Name == "MemoryPackableAttribute");
 }

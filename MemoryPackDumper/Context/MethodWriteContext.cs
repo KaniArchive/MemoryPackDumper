@@ -3,10 +3,10 @@ using MemoryPackDumper.Assembly;
 namespace MemoryPackDumper.Context;
 
 public readonly record struct MethodWriteContext(
-    MemoryPackMethod method,
-    string indent,
-    string className
+    MemoryPackMethod Method,
+    string Indent,
+    string ClassName
 )
 {
-    public string memberIndent => indent + "    ";
+    public string MemberIndent => Indent + "    ";
 }

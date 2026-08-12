@@ -16,18 +16,18 @@ public static class TypeHelper
             ).ToArray()
         ];
 
-        var opts = ParserOptionsContext.current;
+        var opts = ParserOptionsContext.Current;
 
-        if (!string.IsNullOrEmpty(opts.namespaceToLookFor))
-            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == opts.namespaceToLookFor).ToArray()];
+        if (!string.IsNullOrEmpty(opts.NamespaceToLookFor))
+            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == opts.NamespaceToLookFor).ToArray()];
 
-        if (!string.IsNullOrEmpty(opts.typeToLookFor))
+        if (!string.IsNullOrEmpty(opts.TypeToLookFor))
             ret =
             [
                 .. ret.AsValueEnumerable().Where(t =>
-                    t.Name == opts.typeToLookFor ||
-                    (t.BaseType != null && t.BaseType.Name == opts.typeToLookFor) ||
-                    IsSubTypeOf(t, opts.typeToLookFor)
+                    t.Name == opts.TypeToLookFor ||
+                    (t.BaseType != null && t.BaseType.Name == opts.TypeToLookFor) ||
+                    IsSubTypeOf(t, opts.TypeToLookFor)
                 ).ToArray()
             ];
 

@@ -1,35 +1,35 @@
 <Project>
-  <PropertyGroup>
-    <CopyOutputSymbolsToPublishDirectory Condition="'$(CopyOutputSymbolsToPublishDirectory)' == ''">true</CopyOutputSymbolsToPublishDirectory>
-  </PropertyGroup>
+    <PropertyGroup>
+        <CopyOutputSymbolsToPublishDirectory Condition="'$(CopyOutputSymbolsToPublishDirectory)' == ''">true</CopyOutputSymbolsToPublishDirectory>
+    </PropertyGroup>
 
-  <Target Name="RenamePublishOutputToExeName"
-          AfterTargets="Publish"
-          DependsOnTargets="Publish;CopyNativeBinary;_CopyAotSymbols"
-          Condition="'$(OutputExeName)' != '' AND '$(OutputExeName)' != '$(TargetName)'">
+    <Target Name="RenamePublishOutputToExeName"
+            AfterTargets="Publish"
+            DependsOnTargets="Publish;CopyNativeBinary;_CopyAotSymbols"
+            Condition="'$(OutputExeName)' != '' AND '$(OutputExeName)' != '$(TargetName)'">
 
-    <ItemGroup>
-      <_RenameCandidates Include="$(PublishDir)$(TargetName)" />
-      <_RenameCandidates Include="$(PublishDir)$(TargetName).*" />
-    </ItemGroup>
+        <ItemGroup>
+            <_RenameCandidates Include="$(PublishDir)$(TargetName)"/>
+            <_RenameCandidates Include="$(PublishDir)$(TargetName).*"/>
+        </ItemGroup>
 
-    <RenamePublishedFiles
-      Files="@(_RenameCandidates)"
-      OldName="$(TargetName)"
-      NewName="$(OutputExeName)" />
+        <RenamePublishedFiles
+            Files="@(_RenameCandidates)"
+            OldName="$(TargetName)"
+            NewName="$(OutputExeName)"/>
 
-  </Target>
+    </Target>
 
-  <UsingTask TaskName="RenamePublishedFiles" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
-    <ParameterGroup>
-      <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
-      <OldName ParameterType="System.String" Required="true" />
-      <NewName ParameterType="System.String" Required="true" />
-    </ParameterGroup>
-    <Task>
-      <Using Namespace="System.IO" />
-      <Code Type="Fragment" Language="cs">
-<![CDATA[
+    <UsingTask TaskName="RenamePublishedFiles" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+        <ParameterGroup>
+            <Files ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true"/>
+            <OldName ParameterType="System.String" Required="true"/>
+            <NewName ParameterType="System.String" Required="true"/>
+        </ParameterGroup>
+        <Task>
+            <Using Namespace="System.IO"/>
+            <Code Type="Fragment" Language="cs">
+                <![CDATA[
 foreach (var item in Files)
 {
     string path = item.ItemSpec;
@@ -64,8 +64,8 @@ foreach (var item in Files)
     Log.LogMessage(MessageImportance.High, $"Renamed publish output: {fileName} -> {newFileName}");
 }
 ]]>
-      </Code>
-    </Task>
-  </UsingTask>
+            </Code>
+        </Task>
+    </UsingTask>
 
 </Project>

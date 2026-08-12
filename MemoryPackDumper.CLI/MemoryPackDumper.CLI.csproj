@@ -24,6 +24,6 @@
         <ProjectReference Include="..\MemoryPackDumper\MemoryPackDumper.csproj"/>
     </ItemGroup>
 
-    <Import Project="PublishOutput.targets" />
+    <Import Project="PublishOutput.targets"/>
 
 </Project>

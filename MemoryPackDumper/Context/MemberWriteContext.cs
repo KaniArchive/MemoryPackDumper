@@ -3,10 +3,10 @@ using MemoryPackDumper.Assembly;
 namespace MemoryPackDumper.Context;
 
 public readonly record struct MemberWriteContext(
-    MemoryPackMember member,
-    string indent,
-    bool isInterface = false
+    MemoryPackMember Member,
+    string Indent,
+    bool IsInterface = false
 )
 {
-    public string memberIndent => indent + "    ";
+    public string MemberIndent => Indent + "    ";
 }

@@ -43,12 +43,10 @@ public static class MemberParser
         return $"{name}<{genericParams}>";
     }
 
-    private static bool IsRecordType(TypeDef typeDef)
-    {
-        return typeDef.CustomAttributes.AsValueEnumerable().Any(a =>
-                   a.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute") ||
-               (typeDef.BaseType != null && typeDef.BaseType.Name == "Record");
-    }
+    private static bool IsRecordType(TypeDef typeDef) =>
+        typeDef.CustomAttributes.AsValueEnumerable().Any(a =>
+            a.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute") ||
+        (typeDef.BaseType != null && typeDef.BaseType.Name == "Record");
 
     private static void ProcessProperties(TypeDef typeDef, MemoryPackClass memoryPackClass,
         HashSet<string> discoveredTypes)
@@ -88,7 +86,7 @@ public static class MemberParser
 
     private static bool ShouldIncludeMember(MemoryPackMember member, bool isPublic)
     {
-        if (ParserOptionsContext.current.allowHidden) return !member.IsIgnored;
+        if (ParserOptionsContext.Current.AllowHidden) return !member.IsIgnored;
         return member.IsInclude || (!member.IsIgnored && isPublic);
     }
 
@@ -120,11 +118,9 @@ public static class MemberParser
         }
     }
 
-    private static bool IsMemoryPackMethod(MethodDef method)
-    {
-        return IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method) ||
-               IsOverrideMethod(method);
-    }
+    private static bool IsMemoryPackMethod(MethodDef method) =>
+        IsMemoryPackConstructor(method) || IsCallbackMethod(method) || IsStaticConstructor(method) ||
+        IsOverrideMethod(method);
 
     private static bool IsOverrideMethod(MethodDef method)
     {
@@ -134,29 +130,23 @@ public static class MemberParser
         return method.Name != "Serialize" && method.Name != "Deserialize";
     }
 
-    private static bool IsMemoryPackConstructor(MethodDef method)
-    {
-        return method.IsConstructor &&
-               method.CustomAttributes.AsValueEnumerable()
-                   .Any(a => a.AttributeType.Name == "MemoryPackConstructorAttribute");
-    }
+    private static bool IsMemoryPackConstructor(MethodDef method) =>
+        method.IsConstructor &&
+        method.CustomAttributes.AsValueEnumerable()
+            .Any(a => a.AttributeType.Name == "MemoryPackConstructorAttribute");
 
-    private static bool IsCallbackMethod(MethodDef method)
-    {
-        return method.CustomAttributes.AsValueEnumerable().Any(a =>
+    private static bool IsCallbackMethod(MethodDef method) =>
+        method.CustomAttributes.AsValueEnumerable().Any(a =>
             a.AttributeType.Name == "MemoryPackOnSerializingAttribute" ||
             a.AttributeType.Name == "MemoryPackOnSerializedAttribute" ||
             a.AttributeType.Name == "MemoryPackOnDeserializingAttribute" ||
             a.AttributeType.Name == "MemoryPackOnDeserializedAttribute");
-    }
 
-    private static bool IsStaticConstructor(MethodDef method)
-    {
-        return method is { IsStatic: true } &&
-               method.Name.String == "StaticConstructor" &&
-               method.ReturnType.FullName == "System.Void" &&
-               method.Parameters.Count == 0;
-    }
+    private static bool IsStaticConstructor(MethodDef method) =>
+        method is { IsStatic: true } &&
+        method.Name.String == "StaticConstructor" &&
+        method.ReturnType.FullName == "System.Void" &&
+        method.Parameters.Count == 0;
 
     private static MemoryPackMethod CreateMethodFromDefinition(MethodDef methodDef)
     {

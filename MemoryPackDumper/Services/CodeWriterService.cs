@@ -12,35 +12,35 @@ public static class CodeWriterService
     public static void WriteClass<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, ClassWriteContext context)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var actualIndent = context.actualIndent;
-        var baseType = context.@class.BaseClassName == "" ? "" : $" : {context.@class.BaseClassName}";
-        var isInterface = context.@class.TypeKeyword == "interface";
+        var actualIndent = context.ActualIndent;
+        var baseType = context.Class.BaseClassName == "" ? "" : $" : {context.Class.BaseClassName}";
+        var isInterface = context.Class.TypeKeyword == "interface";
 
-        WriteMemoryPackableAttribute(ref writer, context.@class, actualIndent);
+        WriteMemoryPackableAttribute(ref writer, context.Class, actualIndent);
 
-        foreach (var union in context.@class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
+        foreach (var union in context.Class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
             writer.AppendFormat($"{actualIndent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
 
-        var typeDeclaration = context.@class.TypeKeyword switch
+        var typeDeclaration = context.Class.TypeKeyword switch
         {
-            "interface" => $"{actualIndent}public partial interface {context.@class.ClassName}{baseType}\n",
-            "struct" => $"{actualIndent}public partial struct {context.@class.ClassName}{baseType}\n",
-            "abstract" => $"{actualIndent}public abstract partial class {context.@class.ClassName}{baseType}\n",
-            "static" => $"{actualIndent}public static partial class {context.@class.ClassName}{baseType}\n",
-            _ => $"{actualIndent}public partial class {context.@class.ClassName}{baseType}\n"
+            "interface" => $"{actualIndent}public partial interface {context.Class.ClassName}{baseType}\n",
+            "struct" => $"{actualIndent}public partial struct {context.Class.ClassName}{baseType}\n",
+            "abstract" => $"{actualIndent}public abstract partial class {context.Class.ClassName}{baseType}\n",
+            "static" => $"{actualIndent}public static partial class {context.Class.ClassName}{baseType}\n",
+            _ => $"{actualIndent}public partial class {context.Class.ClassName}{baseType}\n"
         };
 
         writer.AppendLiteral(typeDeclaration);
         writer.AppendFormat($"{actualIndent}{{\n");
 
-        foreach (var memberContext in context.@class.Members.Select(member =>
+        foreach (var memberContext in context.Class.Members.Select(member =>
                      new MemberWriteContext(member, actualIndent, isInterface))) WriteMember(ref writer, memberContext);
 
-        foreach (var methodContext in context.@class.Methods.Select(method =>
-                     new MethodWriteContext(method, actualIndent, context.@class.ClassName)))
+        foreach (var methodContext in context.Class.Methods.Select(method =>
+                     new MethodWriteContext(method, actualIndent, context.Class.ClassName)))
             WriteMethod(ref writer, methodContext);
 
-        foreach (var nestedClass in context.@class.NestedClasses)
+        foreach (var nestedClass in context.Class.NestedClasses)
         {
             writer.AppendLine();
             var nestedContext = new ClassWriteContext(nestedClass, actualIndent + "    ");
@@ -53,15 +53,15 @@ public static class CodeWriterService
     public static void WriteEnum<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer, EnumWriteContext context)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var actualIndent = context.actualIndent;
+        var actualIndent = context.ActualIndent;
 
-        writer.AppendFormat($"{actualIndent}public enum {context.@enum.EnumName} : {context.@enum.UnderlyingType}\n");
+        writer.AppendFormat($"{actualIndent}public enum {context.Enum.EnumName} : {context.Enum.UnderlyingType}\n");
         writer.AppendFormat($"{actualIndent}{{\n");
 
-        for (var i = 0; i < context.@enum.Fields.Count; i++)
+        for (var i = 0; i < context.Enum.Fields.Count; i++)
         {
-            var field = context.@enum.Fields[i];
-            var isLast = i == context.@enum.Fields.Count - 1;
+            var field = context.Enum.Fields[i];
+            var isLast = i == context.Enum.Fields.Count - 1;
             var fieldName = EscapeKeyword(field.Name);
             writer.AppendFormat($"{actualIndent}    {fieldName} = {field.Value}{(isLast ? "" : ",")}\n");
         }
@@ -73,61 +73,61 @@ public static class CodeWriterService
         MemberWriteContext context)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var memberIndent = context.memberIndent;
+        var memberIndent = context.MemberIndent;
 
-        if (context.member.Order.HasValue)
-            writer.AppendFormat($"{memberIndent}[MemoryPackOrder({context.member.Order.Value})]\n");
+        if (context.Member.Order.HasValue)
+            writer.AppendFormat($"{memberIndent}[MemoryPackOrder({context.Member.Order.Value})]\n");
 
-        if (context.member.IsInclude)
+        if (context.Member.IsInclude)
             writer.AppendFormat($"{memberIndent}[MemoryPackInclude]\n");
 
-        if (context.member.SuppressDefaultInitialization)
+        if (context.Member.SuppressDefaultInitialization)
             writer.AppendFormat($"{memberIndent}[SuppressDefaultInitialization]\n");
 
-        if (context.member.AllowSerialize)
+        if (context.Member.AllowSerialize)
             writer.AppendFormat($"{memberIndent}[MemoryPackAllowSerialize]\n");
 
-        foreach (var formatter in context.member.CustomFormatters)
+        foreach (var formatter in context.Member.CustomFormatters)
             writer.AppendFormat($"{memberIndent}[{formatter}]\n");
 
-        var typeStr = TypeStringConverter.TypeToString(context.member.Type);
+        var typeStr = TypeStringConverter.TypeToString(context.Member.Type);
 
-        var visibility = context.isInterface ? "" : context.member.IsPublic ? "public " : "private ";
+        var visibility = context.IsInterface ? "" : context.Member.IsPublic ? "public " : "private ";
 
-        if (context.member.IsField)
-            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.member.Name};\n");
+        if (context.Member.IsField)
+            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name};\n");
         else
-            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.member.Name} {{ get; set; }}\n");
+            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} {{ get; set; }}\n");
     }
 
     private static void WriteMethod<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         MethodWriteContext context)
         where TBufferWriter : IBufferWriter<byte>
     {
-        var memberIndent = context.memberIndent;
+        var memberIndent = context.MemberIndent;
 
-        foreach (var attr in context.method.Attributes)
+        foreach (var attr in context.Method.Attributes)
             writer.AppendFormat($"{memberIndent}[{attr}]\n");
 
-        var visibility = $"{context.method.Visibility} ";
-        var staticModifier = context.method.IsStatic ? "static " : "";
-        var overrideModifier = context.method.Name == "GetKeyForItem" ? "override " : "";
+        var visibility = $"{context.Method.Visibility} ";
+        var staticModifier = context.Method.IsStatic ? "static " : "";
+        var overrideModifier = context.Method.Name == "GetKeyForItem" ? "override " : "";
 
-        var parameters = context.method.Parameters.AsValueEnumerable().Select(p => $"{p.Type} {p.Name}")
+        var parameters = context.Method.Parameters.AsValueEnumerable().Select(p => $"{p.Type} {p.Name}")
             .JoinToString(", ");
 
-        if (context.method.IsConstructor)
+        if (context.Method.IsConstructor)
         {
-            var constructorName = context.className.Contains('<')
-                ? context.className[..context.className.IndexOf('<')]
-                : context.className;
+            var constructorName = context.ClassName.Contains('<')
+                ? context.ClassName[..context.ClassName.IndexOf('<')]
+                : context.ClassName;
             writer.AppendFormat($"{memberIndent}{visibility}{constructorName}({parameters}) {{ }}\n");
         }
         else
         {
-            var returnType = context.method.ReturnType == "Void" ? "void" : context.method.ReturnType;
+            var returnType = context.Method.ReturnType == "Void" ? "void" : context.Method.ReturnType;
             writer.AppendFormat(
-                $"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {context.method.Name}({parameters}) => default;\n");
+                $"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {context.Method.Name}({parameters}) => default;\n");
         }
     }
 

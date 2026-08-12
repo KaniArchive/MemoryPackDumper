@@ -26,10 +26,10 @@ public static class FileGeneratorService
             stringWriter.AppendFormat($"using {ns};\n");
         stringWriter.AppendLine();
 
-        if (!string.IsNullOrEmpty(context.customNamespace))
-            stringWriter.AppendFormat($"namespace {context.customNamespace};\n\n");
+        if (!string.IsNullOrEmpty(context.CustomNamespace))
+            stringWriter.AppendFormat($"namespace {context.CustomNamespace};\n\n");
 
-        var indent = string.IsNullOrEmpty(context.customNamespace) ? "" : null;
+        var indent = string.IsNullOrEmpty(context.CustomNamespace) ? "" : null;
 
         foreach (var enumContext in schema.Enums.Select(memoryPackEnum => new EnumWriteContext(memoryPackEnum, indent)))
         {
@@ -45,26 +45,26 @@ public static class FileGeneratorService
         }
 
         stringWriter.Flush();
-        File.WriteAllBytes(context.outputPath, buffer.ToArray());
+        File.WriteAllBytes(context.OutputPath, buffer.ToArray());
     }
 
     public static void WriteSplitFiles(MemoryPackSchema schema, CodeGenerationContext context)
     {
-        if (!Directory.Exists(context.outputPath))
-            Directory.CreateDirectory(context.outputPath);
+        if (!Directory.Exists(context.OutputPath))
+            Directory.CreateDirectory(context.OutputPath);
 
         foreach (var memoryPackEnum in schema.Enums)
         {
-            var nsContext = NamespaceContext.Build(memoryPackEnum.OriginalNamespace, context.customNamespace);
-            var filePath = BuildFilePath(context.outputPath, nsContext.finalNamespace, memoryPackEnum.EnumName);
+            var nsContext = NamespaceContext.Build(memoryPackEnum.OriginalNamespace, context.CustomNamespace);
+            var filePath = BuildFilePath(context.OutputPath, nsContext.FinalNamespace, memoryPackEnum.EnumName);
             WriteSingleEnum(filePath, memoryPackEnum, nsContext);
         }
 
         foreach (var memoryPackClass in schema.Classes)
         {
-            var nsContext = NamespaceContext.Build(memoryPackClass.OriginalNamespace, context.customNamespace);
+            var nsContext = NamespaceContext.Build(memoryPackClass.OriginalNamespace, context.CustomNamespace);
             var fileName = SanitizeFileName(memoryPackClass.ClassName);
-            var filePath = BuildFilePath(context.outputPath, nsContext.finalNamespace, fileName);
+            var filePath = BuildFilePath(context.OutputPath, nsContext.FinalNamespace, fileName);
             WriteSingleClass(filePath, memoryPackClass, nsContext);
         }
     }
@@ -93,10 +93,10 @@ public static class FileGeneratorService
 
         stringWriter.AppendLine();
 
-        if (!string.IsNullOrEmpty(nsContext.finalNamespace))
-            stringWriter.AppendFormat($"namespace {nsContext.finalNamespace};\n\n");
+        if (!string.IsNullOrEmpty(nsContext.FinalNamespace))
+            stringWriter.AppendFormat($"namespace {nsContext.FinalNamespace};\n\n");
 
-        var indent = string.IsNullOrEmpty(nsContext.finalNamespace) ? "" : null;
+        var indent = string.IsNullOrEmpty(nsContext.FinalNamespace) ? "" : null;
         var enumContext = new EnumWriteContext(memoryPackEnum, indent);
         CodeWriterService.WriteEnum(ref stringWriter, enumContext);
 
@@ -115,10 +115,10 @@ public static class FileGeneratorService
             stringWriter.AppendFormat($"using {ns};\n");
         stringWriter.AppendLine();
 
-        if (!string.IsNullOrEmpty(nsContext.finalNamespace))
-            stringWriter.AppendFormat($"namespace {nsContext.finalNamespace};\n\n");
+        if (!string.IsNullOrEmpty(nsContext.FinalNamespace))
+            stringWriter.AppendFormat($"namespace {nsContext.FinalNamespace};\n\n");
 
-        var indent = string.IsNullOrEmpty(nsContext.finalNamespace) ? "" : null;
+        var indent = string.IsNullOrEmpty(nsContext.FinalNamespace) ? "" : null;
         var classContext = new ClassWriteContext(memoryPackClass, indent);
         CodeWriterService.WriteClass(ref stringWriter, classContext);
 
@@ -145,8 +145,8 @@ public static class FileGeneratorService
         foreach (var originalNs in originalNamespaces)
             if (originalNs == "System" || originalNs.StartsWith("System."))
                 namespaces.Add(originalNs);
-            else if (!string.IsNullOrEmpty(nsContext.rootPrefix))
-                namespaces.Add($"{nsContext.rootPrefix}.{originalNs}");
+            else if (!string.IsNullOrEmpty(nsContext.RootPrefix))
+                namespaces.Add($"{nsContext.RootPrefix}.{originalNs}");
             else
                 namespaces.Add(originalNs);
     }

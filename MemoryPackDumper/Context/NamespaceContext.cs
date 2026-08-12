@@ -1,9 +1,9 @@
 namespace MemoryPackDumper.Context;
 
 public readonly record struct NamespaceContext(
-    string originalNamespace,
-    string finalNamespace,
-    string? rootPrefix
+    string OriginalNamespace,
+    string FinalNamespace,
+    string? RootPrefix
 )
 {
     public static NamespaceContext Build(string originalNamespace, string? customNamespace)

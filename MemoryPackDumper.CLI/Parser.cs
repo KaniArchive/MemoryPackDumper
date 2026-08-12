@@ -13,12 +13,12 @@ public static class Parser
         string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool allowHidden,
         bool verbose, bool suppressWarnings)
     {
-        ParserOptionsContext.current = new ParserOptionsContext
+        ParserOptionsContext.Current = new ParserOptionsContext
         {
-            suppressWarnings = suppressWarnings,
-            allowHidden = allowHidden,
-            namespaceToLookFor = namespaceToLookFor,
-            typeToLookFor = type2LookFor
+            SuppressWarnings = suppressWarnings,
+            AllowHidden = allowHidden,
+            NamespaceToLookFor = namespaceToLookFor,
+            TypeToLookFor = type2LookFor
         };
 
         if (verbose) Log.EnableDebugLogging();
@@ -120,7 +120,7 @@ public static class Parser
         }
 
         Log.Info("Adding enums...");
-        foreach (var fEnum in ParserOptionsContext.current.discoveredEnums.AsValueEnumerable()
+        foreach (var fEnum in ParserOptionsContext.Current.DiscoveredEnums.AsValueEnumerable()
                      .Select(MemberParser.TypeToEnum))
             schema.Enums.Add(fEnum);
 
