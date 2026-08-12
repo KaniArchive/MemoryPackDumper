@@ -4,7 +4,7 @@ using ZLinq;
 
 namespace MemoryPackDumper.Assembly;
 
-internal static class TypeHelper
+public static class TypeHelper
 {
     public static List<TypeDef> GetAllMemoryPackableTypes(ModuleDef module)
     {
