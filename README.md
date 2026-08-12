@@ -42,7 +42,7 @@ MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --target-dll "Game.dll" --ou
 
 ```sh
 git clone https://github.com/KaniArchive/MemoryPackDumper
-cd MemoryPackDumper
+cd MemoryPackDumper/MemoryPackDumper.CLI
 ```
 
 3. Build using `dotnet`
@@ -64,11 +64,14 @@ dotnet build
 - `-v, --verbose`: Enable verbose debug logging
 - `-sw, --suppress-warnings`: Suppress warning messages
 
-> [!IMPORTANT]  
-> **Disclaimer:** This software is made solely for educational purposes. I do not claim any responsibility for any usage
-> of this software.
+> [!IMPORTANT]
+> **Disclaimer:** This software is made solely for educational purposes. This project do not claim any responsibility for any usage of this software.
 
 ## Acknowledgement
 
 - [ArkanDash/FbsDumper](https://github.com/ArkanDash/FbsDumper)
 - [Hiro420/FbsDumperV2](https://github.com/Hiro420/FbsDumperV2)
+
+---
+
+<sub>`FbsDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.</sub>
