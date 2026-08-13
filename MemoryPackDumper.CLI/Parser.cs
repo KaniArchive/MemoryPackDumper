@@ -79,14 +79,16 @@ public static class Parser
                 modules.Add(module);
                 var types = TypeHelper.GetAllMemoryPackableTypes(module);
                 allMemoryPackableTypes.AddRange(types);
-                if (verbose) Log.Debug($"Found {types.Count} MemoryPackable types in {Path.GetFileName(dllPath)}");
+                
+                Log.Debug($"Found {types.Count} MemoryPackable types in {Path.GetFileName(dllPath)}");
             }
             catch (Exception ex)
             {
                 Log.Warning($"Failed to read {Path.GetFileName(dllPath)}: {ex.Message}");
             }
 
-        Log.Info($"Getting a list of MemoryPackable types... Found {allMemoryPackableTypes.Count} total");
+        Log.Info($"Getting a list of MemoryPackable types...");
+        Log.Success($"Found {allMemoryPackableTypes.Count} total");
 
         MemoryPackSchema schema = new();
         var processedTypes = new HashSet<string>();
@@ -116,7 +118,7 @@ public static class Parser
             foreach (var newType in discoveredTypes)
                 typesToProcess.Enqueue(newType);
 
-            Log.Global.LogProgress(processedTypes.Count, allMemoryPackableTypes.Count);
+            Log.GlobalSuccess.LogDisassembled(typeDef.Name);
         }
 
         Log.Info("Adding enums...");
@@ -128,7 +130,7 @@ public static class Parser
 
         if (splitClass)
         {
-            Log.Info($"Writing split C# files to {outputFile}/...");
+            Log.Info($"Writing split C# files to {outputFile}...");
             FileGeneratorService.WriteSplitFiles(schema, context);
         }
         else
@@ -137,6 +139,7 @@ public static class Parser
             FileGeneratorService.WriteSingleFile(schema, context);
         }
 
-        Log.Info("Done.");
+        Log.Success("Done!");
+        Log.Shutdown();
     }
 }

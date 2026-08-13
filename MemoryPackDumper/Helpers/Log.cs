@@ -9,6 +9,7 @@ public static class Log
 {
     private static ILoggerFactory? _loggerFactory;
     private static ILogger? _logger;
+    private static ILogger? _successLogger;
     private static bool _isInitialized;
 
     public static ILogger Global
@@ -17,6 +18,15 @@ public static class Log
         {
             EnsureInitialized();
             return _logger!;
+        }
+    }
+
+    public static ILogger GlobalSuccess
+    {
+        get
+        {
+            EnsureInitialized();
+            return _successLogger!;
         }
     }
 
@@ -41,7 +51,9 @@ public static class Log
                         (in template, in info) =>
                         {
                             var timestamp = Chalk.Gray + info.Timestamp.Local.ToString("HH:mm:ss");
-                            var logLevel = GetColoredLogLevel(info.LogLevel);
+                            var logLevel = info.Category.Name == "MemoryPackDumper.Success"
+                                ? Chalk.Green + "[SUC]"
+                                : GetColoredLogLevel(info.LogLevel);
                             template.Format(timestamp, logLevel);
                         });
                 });
@@ -50,6 +62,7 @@ public static class Log
         });
 
         _logger = _loggerFactory.CreateLogger("MemoryPackDumper");
+        _successLogger = _loggerFactory.CreateLogger("MemoryPackDumper.Success");
         _isInitialized = true;
     }
 
@@ -68,7 +81,13 @@ public static class Log
     public static void Info(string message)
     {
         EnsureInitialized();
-        _logger!.ZLogInformation($"{message}");
+        _logger?.ZLogInformation($"{message}");
+    }
+
+    public static void Success(string message)
+    {
+        EnsureInitialized();
+        _successLogger?.ZLogInformation($"{message}");
     }
 
     public static void Error(string message)
@@ -109,14 +128,15 @@ public static class Log
         _loggerFactory?.Dispose();
         _loggerFactory = null;
         _logger = null;
+        _successLogger = null;
         _isInitialized = false;
     }
 }
 
 public static partial class LogMessages
 {
-    [ZLoggerMessage(LogLevel.Information, "Disassembling types ({current}/{total})...")]
-    public static partial void LogProgress(this ILogger logger, int current, int total);
+    [ZLoggerMessage(LogLevel.Information, "Disassembled: {type}")]
+    public static partial void LogDisassembled(this ILogger logger, string type);
 
     [ZLoggerMessage(LogLevel.Error, "Dummy assembly directory '{path}' not found.")]
     public static partial void LogDummyDirNotFound(this ILogger logger, string path);
