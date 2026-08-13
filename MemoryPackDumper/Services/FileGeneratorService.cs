@@ -7,6 +7,8 @@ namespace MemoryPackDumper.Services;
 
 public static class FileGeneratorService
 {
+    public const string CSharpExtension = ".cs";
+
     public static void WriteSingleFile(MemoryPackSchema schema, CodeGenerationContext context)
     {
         using var buffer = Utf8String.CreateWriter(out var stringWriter);
@@ -50,42 +52,26 @@ public static class FileGeneratorService
 
     public static void WriteSplitFiles(MemoryPackSchema schema, CodeGenerationContext context)
     {
-        if (!Directory.Exists(context.OutputPath))
-            Directory.CreateDirectory(context.OutputPath);
+        OutputPathHelper.EnsureDirectory(context.OutputPath);
 
         foreach (var memoryPackEnum in schema.Enums)
         {
             var nsContext = NamespaceContext.Build(memoryPackEnum.OriginalNamespace, context.CustomNamespace);
-            var filePath = BuildFilePath(context.OutputPath, nsContext.FinalNamespace, memoryPackEnum.EnumName);
+            var filePath = BuildFilePath(nsContext, context.OutputPath, memoryPackEnum.EnumName);
             WriteSingleEnum(filePath, memoryPackEnum, nsContext);
         }
 
         foreach (var memoryPackClass in schema.Classes)
         {
             var nsContext = NamespaceContext.Build(memoryPackClass.OriginalNamespace, context.CustomNamespace);
-            var fileName = SanitizeFileName(memoryPackClass.ClassName);
-            var filePath = BuildFilePath(context.OutputPath, nsContext.FinalNamespace, fileName);
+            var filePath = BuildFilePath(nsContext, context.OutputPath, memoryPackClass.ClassName);
             WriteSingleClass(filePath, memoryPackClass, nsContext);
         }
     }
 
-    private static string SanitizeFileName(string className)
-    {
-        var genericIndex = className.IndexOf('<');
-        return genericIndex > 0 ? className[..genericIndex] : className;
-    }
-
-    private static string BuildFilePath(string outputDir, string namespacePath, string fileName)
-    {
-        if (string.IsNullOrEmpty(namespacePath))
-            return Path.Combine(outputDir, $"{fileName}.cs");
-
-        var folderPath = Path.Combine(outputDir, namespacePath.Replace('.', Path.DirectorySeparatorChar));
-        if (!Directory.Exists(folderPath))
-            Directory.CreateDirectory(folderPath);
-
-        return Path.Combine(folderPath, $"{fileName}.cs");
-    }
+    private static string BuildFilePath(NamespaceContext nsContext, string outputDir, string typeName) =>
+        OutputPathHelper.BuildFilePath(outputDir, nsContext.FinalNamespace,
+            OutputPathHelper.SanitizeFileName(typeName), CSharpExtension);
 
     private static void WriteSingleEnum(string filePath, MemoryPackEnum memoryPackEnum, NamespaceContext nsContext)
     {

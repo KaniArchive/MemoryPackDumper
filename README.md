@@ -33,6 +33,9 @@ MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --split-class --namespace ""
 
 # Specify a dll to limit the search
 MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --target-dll "Game.dll" --output-file "MemoryPack.cs"
+
+# Export MemoryPack IDL (.mpk) instead of C#
+MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --schema
 ```
 
 ## Build
@@ -54,9 +57,10 @@ dotnet build
 ## Options
 
 - `-d, --dummy-dll`: Specifies the dummy DLL directory (Required)
-- `-o, --output-file`: Specifies the output file or directory when using --split-class (Default: MemoryPack.cs)
+- `-o, --output-file`: Specifies the output file or directory when using --split-class (Default: MemoryPack.cs, or MemoryPack.mpk with --schema)
 - `-n, --namespace`: Specifies the C# namespace for generated classes (Default: MemoryPackData)
 - `-sc, --split-class`: Split classes into individual files organized by namespace folders
+- `-s, --schema`: Emit MemoryPack IDL (`.mpk`) instead of C# code
 - `-ah, --allow-hidden`: Include private, protected, and internal members in output
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for (filters types)
 - `-tl, --type-to-look-for`: Specifies the type to look for (filters types)

@@ -9,10 +9,15 @@ namespace MemoryPackDumper.CLI;
 
 public static class Parser
 {
-    public static void Execute(string dummyDll, string outputFile, string nameSpace,
-        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool allowHidden,
-        bool verbose, bool suppressWarnings)
+    private const string DefaultCodeOutput = "MemoryPack.cs";
+    private const string DefaultSchemaOutput = "MemoryPack.mpk";
+
+    public static void Execute(string dummyDll, string? outputFile, string nameSpace,
+        string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool schema,
+        bool allowHidden, bool verbose, bool suppressWarnings)
     {
+        outputFile ??= schema ? DefaultSchemaOutput : DefaultCodeOutput;
+
         ParserOptionsContext.Current = new ParserOptionsContext
         {
             SuppressWarnings = suppressWarnings,
@@ -90,7 +95,7 @@ public static class Parser
         Log.Info($"Getting a list of MemoryPackable types...");
         Log.Success($"Found {allMemoryPackableTypes.Count} total");
 
-        MemoryPackSchema schema = new();
+        MemoryPackSchema memoryPackSchema = new();
         var processedTypes = new HashSet<string>();
         var typesToProcess = new Queue<string>([.. allMemoryPackableTypes.AsValueEnumerable().Select(t => t.FullName)]);
 
@@ -113,7 +118,7 @@ public static class Parser
 
             var discoveredTypes = new HashSet<string>();
             var memoryPackClass = MemberParser.TypeToMemoryPackClass(typeDef, discoveredTypes);
-            schema.Classes.Add(memoryPackClass);
+            memoryPackSchema.Classes.Add(memoryPackClass);
 
             foreach (var newType in discoveredTypes)
                 typesToProcess.Enqueue(newType);
@@ -124,19 +129,29 @@ public static class Parser
         Log.Info("Adding enums...");
         foreach (var fEnum in ParserOptionsContext.Current.DiscoveredEnums.AsValueEnumerable()
                      .Select(MemberParser.TypeToEnum))
-            schema.Enums.Add(fEnum);
+            memoryPackSchema.Enums.Add(fEnum);
 
         var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
+        var format = schema ? "MemoryPack IDL" : "C#";
 
-        if (splitClass)
+        switch (schema, splitClass)
         {
-            Log.Info($"Writing split C# files to {outputFile}...");
-            FileGeneratorService.WriteSplitFiles(schema, context);
-        }
-        else
-        {
-            Log.Info($"Writing C# code to {outputFile}...");
-            FileGeneratorService.WriteSingleFile(schema, context);
+            case (true, true):
+                Log.Info($"Writing split {format} files to {outputFile}...");
+                SchemaFileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
+                break;
+            case (true, false):
+                Log.Info($"Writing {format} to {outputFile}...");
+                SchemaFileGeneratorService.WriteSingleFile(memoryPackSchema, context);
+                break;
+            case (false, true):
+                Log.Info($"Writing split {format} files to {outputFile}...");
+                FileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
+                break;
+            default:
+                Log.Info($"Writing {format} code to {outputFile}...");
+                FileGeneratorService.WriteSingleFile(memoryPackSchema, context);
+                break;
         }
 
         Log.Success("Done!");

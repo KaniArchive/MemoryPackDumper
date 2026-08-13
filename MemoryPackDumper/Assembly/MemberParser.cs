@@ -191,17 +191,24 @@ public static class MemberParser
         var accessorMethod = property.GetMethod ?? property.SetMethod;
         var member = new MemoryPackMember(property.Name, property.PropertySig.RetType, false)
         {
-            IsPublic = accessorMethod?.IsPublic ?? false
+            IsPublic = accessorMethod?.IsPublic ?? false,
+            IsInit = IsInitOnlySetter(property.SetMethod),
+            IsReadOnly = property.SetMethod == null
         };
         AttributeExtractor.ExtractMemberAttributes(property.CustomAttributes, member);
         return member;
     }
 
+    private static bool IsInitOnlySetter(MethodDef? setMethod) =>
+        setMethod?.ReturnType is CModReqdSig modifier &&
+        modifier.Modifier?.Name == "IsExternalInit";
+
     private static MemoryPackMember CreateMemberFromField(FieldDef field)
     {
         var member = new MemoryPackMember(field.Name, field.FieldType, true)
         {
-            IsPublic = field.IsPublic
+            IsPublic = field.IsPublic,
+            IsReadOnly = field.IsInitOnly
         };
         AttributeExtractor.ExtractMemberAttributes(field.CustomAttributes, member);
         return member;

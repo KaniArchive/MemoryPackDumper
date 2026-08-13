@@ -12,20 +12,22 @@ public static class Args
     /// <param name="typeToLookFor">-tl, Specifies the type to look for</param>
     /// <param name="targetDll">-t, Specifies a specific DLL to process (if not set, processes all DLLs)</param>
     /// <param name="splitClass">-sc, Split classes into individual files organized by namespace</param>
+    /// <param name="schema">-s, Emit MemoryPack IDL (.mpschema) instead of C# code.</param>
     /// <param name="allowHidden">-ah, Include private, protected, and internal members in output.</param>
     /// <param name="verbose">-v, Enable verbose debug logging.</param>
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(
         string dummyDll,
-        string outputFile = "MemoryPack.cs",
+        string? outputFile = null,
         string @namespace = "MemoryPackData",
         string? namespaceToLookFor = null,
         string? typeToLookFor = null,
         string? targetDll = null,
         bool splitClass = false,
+        bool schema = false,
         bool allowHidden = false,
         bool verbose = false,
         bool suppressWarnings = false) =>
         Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
-            allowHidden, verbose, suppressWarnings);
+            schema, allowHidden, verbose, suppressWarnings);
 }

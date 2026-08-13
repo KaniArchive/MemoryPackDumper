@@ -82,6 +82,10 @@ public static class AttributeExtractor
                     member.IsReadOnly = true;
                     break;
 
+                case "RequiredMemberAttribute":
+                    member.IsRequired = true;
+                    break;
+
                 default:
                     if (attr.AttributeType.Name.Contains("Formatter"))
                     {
