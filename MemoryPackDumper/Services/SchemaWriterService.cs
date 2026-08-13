@@ -32,7 +32,8 @@ public static class SchemaWriterService
         var indent = context.ActualIndent;
         var underlying = SchemaTypeConverter.MapEnumUnderlyingType(context.Enum.UnderlyingType);
 
-        writer.AppendFormat($"{indent}enum {SchemaTypeConverter.Identifier(context.Enum.EnumName)} : {underlying} {{\n");
+        writer.AppendFormat(
+            $"{indent}enum {SchemaTypeConverter.Identifier(context.Enum.EnumName)} : {underlying} {{\n");
 
         foreach (var field in context.Enum.Fields)
             writer.AppendFormat($"{indent}    {SchemaTypeConverter.Identifier(field.Name)} = {field.Value},\n");

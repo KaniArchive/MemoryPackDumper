@@ -113,7 +113,7 @@ public static class MemberParser
             if (!IsMemoryPackMethod(method)) continue;
 
             var memMethod = CreateMethodFromDefinition(method);
-            memMethod.IsConstructor = method.IsConstructor && !method.IsStatic;
+            memMethod.IsConstructor = method is { IsConstructor: true, IsStatic: false };
             memoryPackClass.Methods.Add(memMethod);
         }
     }
@@ -148,10 +148,10 @@ public static class MemberParser
         method.ReturnType.FullName == "System.Void" &&
         method.Parameters.Count == 0;
 
-    private static bool IsParameterizedConstructor(MethodDef method) => 
-        method is { IsConstructor: true, IsStatic: false, IsPublic: true } && 
+    private static bool IsParameterizedConstructor(MethodDef method) =>
+        method is { IsConstructor: true, IsStatic: false, IsPublic: true } &&
         method.Parameters.AsValueEnumerable().Any(p => !p.IsHiddenThisParameter);
-    
+
     private static MemoryPackMethod CreateMethodFromDefinition(MethodDef methodDef)
     {
         var returnType = TypeStringConverter.TypeToString(methodDef.ReturnType);

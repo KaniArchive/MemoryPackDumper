@@ -84,7 +84,7 @@ public static class Parser
                 modules.Add(module);
                 var types = TypeHelper.GetAllMemoryPackableTypes(module);
                 allMemoryPackableTypes.AddRange(types);
-                
+
                 Log.Debug($"Found {types.Count} MemoryPackable types in {Path.GetFileName(dllPath)}");
             }
             catch (Exception ex)
@@ -92,7 +92,7 @@ public static class Parser
                 Log.Warning($"Failed to read {Path.GetFileName(dllPath)}: {ex.Message}");
             }
 
-        Log.Info($"Getting a list of MemoryPackable types...");
+        Log.Info("Getting a list of MemoryPackable types...");
         Log.Success($"Found {allMemoryPackableTypes.Count} total");
 
         MemoryPackSchema memoryPackSchema = new();
