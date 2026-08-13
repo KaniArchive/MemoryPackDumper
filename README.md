@@ -78,4 +78,4 @@ dotnet build
 
 ---
 
-<sub>`FbsDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.</sub>
+<sub>`MemoryPackDumper` is under **GPL v3**. See [LICENSE](LICENSE) for copyright and license details.</sub>
