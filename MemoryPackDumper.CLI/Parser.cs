@@ -126,6 +126,8 @@ public static class Parser
                      .Select(MemberParser.TypeToEnum))
             memoryPackSchema.Enums.Add(fEnum);
 
+        SchemaLinker.ResolveBaseConstructors(memoryPackSchema);
+
         var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
         var format = schema ? "MemoryPack IDL" : "C#";
 

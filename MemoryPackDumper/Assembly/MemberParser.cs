@@ -16,6 +16,8 @@ public static class MemberParser
             IsRecord = IsRecordType(typeDef),
             IsMemoryPackable = TypeReferenceTracker.IsMemoryPackable(typeDef),
             BaseTypeReference = typeDef.BaseType,
+            FullName = typeDef.FullName,
+            BaseTypeFullName = GetBaseTypeFullName(typeDef),
             OriginalNamespace = typeDef.Namespace ?? ""
         };
 
@@ -33,6 +35,14 @@ public static class MemberParser
 
         return memoryPackClass;
     }
+    
+    private static string GetBaseTypeFullName(TypeDef typeDef)
+    {
+        if (typeDef.BaseType == null) return "";
+
+        return typeDef.BaseType.ResolveTypeDef()?.FullName ?? typeDef.BaseType.FullName;
+    }
+
 
     private static void TrackBaseType(TypeDef typeDef, HashSet<TypeDef> discoveredTypes)
     {

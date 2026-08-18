@@ -18,6 +18,9 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public readonly string TypeKeyword = typeKeyword;
     public readonly List<MemoryPackUnion> Unions = [];
     public ITypeDefOrRef? BaseTypeReference = null;
+    public string BaseTypeFullName = "";
+    public string FullName = "";
+    public int BaseConstructorArity = 0;
     public string? GenerateType = null;
     public bool IsMemoryPackable = true;
     public bool IsRecord = false;
