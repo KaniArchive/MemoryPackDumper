@@ -49,7 +49,7 @@ public static class AttributeExtractor
 
         var tag = Convert.ToInt32(attr.ConstructorArguments[0].Value);
         if (attr.ConstructorArguments[1].Value is TypeSig typeSig)
-            memoryPackClass.Unions.Add(new MemoryPackUnion(tag, typeSig.ReflectionName));
+            memoryPackClass.Unions.Add(new MemoryPackUnion(tag, TypeStringConverter.TypeToString(typeSig)));
     }
 
     public static void ExtractMemberAttributes(CustomAttributeCollection attributes, MemoryPackMember member)

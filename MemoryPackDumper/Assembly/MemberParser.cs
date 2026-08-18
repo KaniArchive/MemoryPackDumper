@@ -26,6 +26,7 @@ public static class MemberParser
 
         ProcessProperties(typeDef, memoryPackClass, discoveredTypes);
         ProcessFields(typeDef, memoryPackClass, discoveredTypes);
+        RemoveDuplicateMembers(memoryPackClass);
         SortMembersByOrder(memoryPackClass);
         ProcessMethods(typeDef, memoryPackClass, discoveredTypes);
         ProcessNestedTypes(typeDef, memoryPackClass, discoveredTypes);
@@ -80,6 +81,7 @@ public static class MemberParser
         {
             var accessorMethod = property.GetMethod ?? property.SetMethod;
             if (accessorMethod == null || accessorMethod.IsStatic) continue;
+            if (IsIndexer(property)) continue;
 
             var member = CreateMemberFromProperty(property);
             if (!ShouldIncludeMember(member, accessorMethod.IsPublic)) continue;
@@ -101,6 +103,24 @@ public static class MemberParser
             memoryPackClass.Members.Add(member);
             TypeReferenceTracker.TrackReferencedType(member.Type, discoveredTypes);
         }
+    }
+
+    private static bool IsIndexer(PropertyDef property)
+    {
+        if (property.PropertySig?.Params.Count > 0) return true;
+
+        if (property.GetMethod is { } getter && RealParameterCount(getter) > 0) return true;
+
+        return property.SetMethod is { } setter && RealParameterCount(setter) > 1;
+    }
+
+    private static int RealParameterCount(MethodDef method) =>
+        method.Parameters.AsValueEnumerable().Count(p => !p.IsHiddenThisParameter);
+
+    private static void RemoveDuplicateMembers(MemoryPackClass memoryPackClass)
+    {
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        memoryPackClass.Members.RemoveAll(m => !seen.Add(m.Name));
     }
 
     private static bool IsCompilerGeneratedBackingField(FieldDef field)

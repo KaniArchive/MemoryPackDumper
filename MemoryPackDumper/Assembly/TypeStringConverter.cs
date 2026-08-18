@@ -37,16 +37,44 @@ public static class TypeStringConverter
             GenericInstSig genericInstance => ConvertGenericType(genericInstance),
             SZArraySig szArray => TypeToString(szArray.Next) + "[]",
             ArraySig array => TypeToString(array.Next) + "[]",
-            _ => TypeMap.GetValueOrDefault(typeSig.FullName, typeSig.TypeName)
+            ByRefSig or PtrSig or PinnedSig or CModReqdSig or CModOptSig => TypeToString(typeSig.Next),
+            GenericSig => typeSig.TypeName,
+            _ => TypeMap.GetValueOrDefault(typeSig.FullName, QualifiedName(typeSig))
         };
     }
 
     private static string ConvertGenericType(GenericInstSig genericInstance)
     {
-        var baseType = genericInstance.GenericType.TypeName;
-        if (baseType.Contains('`')) baseType = baseType[..baseType.IndexOf('`')];
+        var baseType = StripArity(QualifiedName(genericInstance.GenericType?.TypeDefOrRef));
 
         var genericArgs = genericInstance.GenericArguments.AsValueEnumerable().Select(TypeToString).JoinToString(", ");
         return $"{baseType}<{genericArgs}>";
     }
+
+    private static string QualifiedName(TypeSig typeSig) =>
+        QualifiedName(typeSig.ToTypeDefOrRef()) is { Length: > 0 } name ? name : typeSig.TypeName;
+
+    private static string QualifiedName(ITypeDefOrRef? typeDefOrRef)
+    {
+        if (typeDefOrRef == null) return "";
+        if (typeDefOrRef is TypeSpec typeSpec) return TypeToString(typeSpec.TypeSig);
+
+        var typeDef = typeDefOrRef.ResolveTypeDef();
+        if (typeDef == null) return StripArity(typeDefOrRef.Name.String);
+
+        var segments = new List<string>();
+        var current = typeDef;
+
+        while (current != null)
+        {
+            segments.Add(StripArity(current.Name.String));
+            current = current.DeclaringType;
+        }
+
+        segments.Reverse();
+        return string.Join('.', segments);
+    }
+
+    private static string StripArity(string name) =>
+        name.Contains('`') ? name[..name.IndexOf('`')] : name;
 }
