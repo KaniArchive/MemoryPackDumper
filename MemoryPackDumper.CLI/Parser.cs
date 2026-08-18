@@ -14,7 +14,7 @@ public static class Parser
 
     public static void Execute(string dummyDll, string? outputFile, string nameSpace,
         string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool schema,
-        bool allowHidden, bool verbose, bool suppressWarnings)
+        bool allowHidden, bool noReferencedTypes, bool verbose, bool suppressWarnings)
     {
         outputFile ??= schema ? DefaultSchemaOutput : DefaultCodeOutput;
 
@@ -22,6 +22,7 @@ public static class Parser
         {
             SuppressWarnings = suppressWarnings,
             AllowHidden = allowHidden,
+            EmitReferencedTypes = !noReferencedTypes,
             NamespaceToLookFor = namespaceToLookFor,
             TypeToLookFor = type2LookFor
         };
@@ -82,6 +83,7 @@ public static class Parser
             {
                 var module = ModuleDefMD.Load(dllPath, readerParameters);
                 modules.Add(module);
+                TypeHelper.RegisterScannedAssembly(module);
                 var types = TypeHelper.GetAllMemoryPackableTypes(module);
                 allMemoryPackableTypes.AddRange(types);
 
@@ -97,31 +99,24 @@ public static class Parser
 
         MemoryPackSchema memoryPackSchema = new();
         var processedTypes = new HashSet<string>();
-        var typesToProcess = new Queue<string>([.. allMemoryPackableTypes.AsValueEnumerable().Select(t => t.FullName)]);
+        var typesToProcess = new Queue<TypeDef>(allMemoryPackableTypes);
 
         while (typesToProcess.Count > 0)
         {
-            var typeFullName = typesToProcess.Dequeue();
+            var typeDef = TypeReferenceTracker.ResolveEmitTarget(typesToProcess.Dequeue());
 
-            if (!processedTypes.Add(typeFullName))
+            if (!processedTypes.Add(typeDef.FullName))
                 continue;
 
-            TypeDef? typeDef = null;
-            foreach (var module in modules)
-            {
-                typeDef = module.Find(typeFullName, false);
-                if (typeDef != null) break;
-            }
-
-            if (typeDef == null)
-                continue;
-
-            var discoveredTypes = new HashSet<string>();
+            var discoveredTypes = new HashSet<TypeDef>();
             var memoryPackClass = MemberParser.TypeToMemoryPackClass(typeDef, discoveredTypes);
             memoryPackSchema.Classes.Add(memoryPackClass);
 
             foreach (var newType in discoveredTypes)
+            {
+                if (processedTypes.Contains(newType.FullName)) continue;
                 typesToProcess.Enqueue(newType);
+            }
 
             Log.GlobalSuccess.LogDisassembled(typeDef.Name);
         }

@@ -19,6 +19,7 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public readonly List<MemoryPackUnion> Unions = [];
     public ITypeDefOrRef? BaseTypeReference = null;
     public string? GenerateType = null;
+    public bool IsMemoryPackable = true;
     public bool IsRecord = false;
     public readonly List<MemoryPackClass> NestedClasses = [];
     public string OriginalNamespace = "";

@@ -16,10 +16,13 @@ public static class CodeWriterService
         var baseType = context.Class.BaseClassName == "" ? "" : $" : {context.Class.BaseClassName}";
         var isInterface = context.Class.TypeKeyword == "interface";
 
-        WriteMemoryPackableAttribute(ref writer, context.Class, actualIndent);
+        if (context.Class.IsMemoryPackable)
+        {
+            WriteMemoryPackableAttribute(ref writer, context.Class, actualIndent);
 
-        foreach (var union in context.Class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
-            writer.AppendFormat($"{actualIndent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
+            foreach (var union in context.Class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
+                writer.AppendFormat($"{actualIndent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
+        }
 
         var typeDeclaration = context.Class.TypeKeyword switch
         {

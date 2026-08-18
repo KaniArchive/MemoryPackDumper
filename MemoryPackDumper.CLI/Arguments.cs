@@ -14,6 +14,7 @@ public static class Args
     /// <param name="splitClass">-sc, Split classes into individual files organized by namespace</param>
     /// <param name="schema">-s, Emit MemoryPack IDL (.mpschema) instead of C# code.</param>
     /// <param name="allowHidden">-ah, Include private, protected, and internal members in output.</param>
+    /// <param name="noReferencedTypes">-nr, Do not emit referenced non-MemoryPackable types.</param>
     /// <param name="verbose">-v, Enable verbose debug logging.</param>
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(
@@ -26,8 +27,9 @@ public static class Args
         bool splitClass = false,
         bool schema = false,
         bool allowHidden = false,
+        bool noReferencedTypes = false,
         bool verbose = false,
         bool suppressWarnings = false) =>
         Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
-            schema, allowHidden, verbose, suppressWarnings);
+            schema, allowHidden, noReferencedTypes, verbose, suppressWarnings);
 }

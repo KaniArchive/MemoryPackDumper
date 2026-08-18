@@ -6,7 +6,7 @@ namespace MemoryPackDumper.Assembly;
 
 public static class MemberParser
 {
-    public static MemoryPackClass TypeToMemoryPackClass(TypeDef typeDef, HashSet<string> discoveredTypes)
+    public static MemoryPackClass TypeToMemoryPackClass(TypeDef typeDef, HashSet<TypeDef> discoveredTypes)
     {
         var className = GetClassName(typeDef);
         var typeKeyword = TypeHelper.GetTypeKeyword(typeDef);
@@ -14,19 +14,44 @@ public static class MemberParser
         var memoryPackClass = new MemoryPackClass(className, baseType, typeKeyword)
         {
             IsRecord = IsRecordType(typeDef),
+            IsMemoryPackable = TypeReferenceTracker.IsMemoryPackable(typeDef),
             BaseTypeReference = typeDef.BaseType,
             OriginalNamespace = typeDef.Namespace ?? ""
         };
 
         AttributeExtractor.ExtractClassAttributes(typeDef, memoryPackClass);
 
+        TrackBaseType(typeDef, discoveredTypes);
+        TrackUnionTargets(typeDef, discoveredTypes);
+
         ProcessProperties(typeDef, memoryPackClass, discoveredTypes);
         ProcessFields(typeDef, memoryPackClass, discoveredTypes);
         SortMembersByOrder(memoryPackClass);
-        ProcessMethods(typeDef, memoryPackClass);
+        ProcessMethods(typeDef, memoryPackClass, discoveredTypes);
         ProcessNestedTypes(typeDef, memoryPackClass, discoveredTypes);
 
         return memoryPackClass;
+    }
+
+    private static void TrackBaseType(TypeDef typeDef, HashSet<TypeDef> discoveredTypes)
+    {
+        if (typeDef.BaseType == null) return;
+
+        var baseFullName = typeDef.BaseType.FullName;
+        if (baseFullName is "System.Object" or "System.ValueType" or "System.Enum") return;
+
+        TypeReferenceTracker.TrackReferencedType(typeDef.BaseType, discoveredTypes);
+    }
+
+    private static void TrackUnionTargets(TypeDef typeDef, HashSet<TypeDef> discoveredTypes)
+    {
+        foreach (var attr in typeDef.CustomAttributes.AsValueEnumerable()
+                     .Where(a => a.AttributeType.Name == "MemoryPackUnionAttribute"))
+        {
+            if (attr.ConstructorArguments.Count < 2) continue;
+            if (attr.ConstructorArguments[1].Value is TypeSig typeSig)
+                TypeReferenceTracker.TrackReferencedType(typeSig, discoveredTypes);
+        }
     }
 
     private static string GetClassName(TypeDef typeDef)
@@ -49,7 +74,7 @@ public static class MemberParser
         (typeDef.BaseType != null && typeDef.BaseType.Name == "Record");
 
     private static void ProcessProperties(TypeDef typeDef, MemoryPackClass memoryPackClass,
-        HashSet<string> discoveredTypes)
+        HashSet<TypeDef> discoveredTypes)
     {
         foreach (var property in typeDef.Properties)
         {
@@ -65,7 +90,7 @@ public static class MemberParser
     }
 
     private static void ProcessFields(TypeDef typeDef, MemoryPackClass memoryPackClass,
-        HashSet<string> discoveredTypes)
+        HashSet<TypeDef> discoveredTypes)
     {
         foreach (var field in typeDef.Fields.AsValueEnumerable()
                      .Where(f => !f.IsStatic && !f.IsLiteral && !IsCompilerGeneratedBackingField(f)))
@@ -106,7 +131,8 @@ public static class MemberParser
         });
     }
 
-    private static void ProcessMethods(TypeDef typeDef, MemoryPackClass memoryPackClass)
+    private static void ProcessMethods(TypeDef typeDef, MemoryPackClass memoryPackClass,
+        HashSet<TypeDef> discoveredTypes)
     {
         foreach (var method in typeDef.Methods)
         {
@@ -115,7 +141,18 @@ public static class MemberParser
             var memMethod = CreateMethodFromDefinition(method);
             memMethod.IsConstructor = method is { IsConstructor: true, IsStatic: false };
             memoryPackClass.Methods.Add(memMethod);
+
+            TrackMethodSignature(method, discoveredTypes);
         }
+    }
+
+    private static void TrackMethodSignature(MethodDef method, HashSet<TypeDef> discoveredTypes)
+    {
+        if (!method.IsConstructor)
+            TypeReferenceTracker.TrackReferencedType(method.ReturnType, discoveredTypes);
+
+        foreach (var param in method.Parameters.AsValueEnumerable().Where(p => !p.IsHiddenThisParameter))
+            TypeReferenceTracker.TrackReferencedType(param.Type, discoveredTypes);
     }
 
     private static bool IsMemoryPackMethod(MethodDef method) =>
@@ -252,7 +289,7 @@ public static class MemberParser
     }
 
     private static void ProcessNestedTypes(TypeDef typeDef, MemoryPackClass memoryPackClass,
-        HashSet<string> discoveredTypes)
+        HashSet<TypeDef> discoveredTypes)
     {
         if (!typeDef.HasNestedTypes) return;
 

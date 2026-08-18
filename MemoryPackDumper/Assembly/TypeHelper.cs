@@ -6,6 +6,16 @@ namespace MemoryPackDumper.Assembly;
 
 public static class TypeHelper
 {
+    public static void RegisterScannedAssembly(ModuleDef module)
+    {
+        var scanned = ParserOptionsContext.Current.ScannedAssemblies;
+
+        scanned.Add(module.Name.String);
+
+        var assemblyName = module.Assembly?.Name.String;
+        if (!string.IsNullOrEmpty(assemblyName)) scanned.Add(assemblyName);
+    }
+
     public static List<TypeDef> GetAllMemoryPackableTypes(ModuleDef module)
     {
         List<TypeDef> ret =
