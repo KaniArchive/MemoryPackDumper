@@ -26,8 +26,7 @@ public static class MemberParser
         TrackBaseType(typeDef, discoveredTypes);
         TrackUnionTargets(typeDef, discoveredTypes);
 
-        ProcessProperties(typeDef, memoryPackClass, discoveredTypes);
-        ProcessFields(typeDef, memoryPackClass, discoveredTypes);
+        ProcessMembers(typeDef, memoryPackClass, discoveredTypes);
         RemoveDuplicateMembers(memoryPackClass);
         SortMembersByOrder(memoryPackClass);
         ProcessMethods(typeDef, memoryPackClass, discoveredTypes);
@@ -84,7 +83,39 @@ public static class MemberParser
             a.AttributeType.FullName == "System.Runtime.CompilerServices.CompilerGeneratedAttribute") ||
         (typeDef.BaseType != null && typeDef.BaseType.Name == "Record");
 
-    private static void ProcessProperties(TypeDef typeDef, MemoryPackClass memoryPackClass,
+    private static void ProcessMembers(TypeDef typeDef, MemoryPackClass memoryPackClass,
+        HashSet<TypeDef> discoveredTypes)
+    {
+        if (typeDef.IsInterface)
+        {
+            ProcessInterfaceProperties(typeDef, memoryPackClass, discoveredTypes);
+            return;
+        }
+
+        var backingFields = MapBackingFields(typeDef);
+        var emittedProperties = new HashSet<string>(StringComparer.Ordinal);
+        var preserveLayout = IsRawLayoutStruct(typeDef);
+
+        foreach (var field in typeDef.Fields.AsValueEnumerable().Where(f => !f.IsStatic && !f.IsLiteral))
+        {
+            if (backingFields.TryGetValue(field.Name.String, out var property))
+            {
+                var propertyMember = CreateMemberFromProperty(property);
+                emittedProperties.Add(property.Name.String);
+                AddMember(memoryPackClass, propertyMember, propertyMember.IsPublic, discoveredTypes);
+                continue;
+            }
+
+            if (IsCompilerGeneratedBackingField(field)) continue;
+
+            var fieldMember = CreateMemberFromField(field);
+            AddMember(memoryPackClass, fieldMember, field.IsPublic || preserveLayout, discoveredTypes);
+        }
+
+        ProcessComputedProperties(typeDef, memoryPackClass, emittedProperties, discoveredTypes);
+    }
+
+    private static void ProcessInterfaceProperties(TypeDef typeDef, MemoryPackClass memoryPackClass,
         HashSet<TypeDef> discoveredTypes)
     {
         foreach (var property in typeDef.Properties)
@@ -94,26 +125,54 @@ public static class MemberParser
             if (IsIndexer(property)) continue;
 
             var member = CreateMemberFromProperty(property);
-            if (!ShouldIncludeMember(member, accessorMethod.IsPublic)) continue;
-
-            memoryPackClass.Members.Add(member);
-            TypeReferenceTracker.TrackReferencedType(member.Type, discoveredTypes);
+            AddMember(memoryPackClass, member, accessorMethod.IsPublic, discoveredTypes);
         }
     }
 
-    private static void ProcessFields(TypeDef typeDef, MemoryPackClass memoryPackClass,
+    private static void ProcessComputedProperties(TypeDef typeDef, MemoryPackClass memoryPackClass,
+        HashSet<string> emittedProperties, HashSet<TypeDef> discoveredTypes)
+    {
+        foreach (var property in typeDef.Properties)
+        {
+            if (emittedProperties.Contains(property.Name.String)) continue;
+
+            var accessorMethod = property.GetMethod ?? property.SetMethod;
+            if (accessorMethod == null || accessorMethod.IsStatic) continue;
+            if (IsIndexer(property)) continue;
+
+            var member = CreateMemberFromProperty(property);
+            member.IsComputed = true;
+            AddMember(memoryPackClass, member, accessorMethod.IsPublic, discoveredTypes);
+        }
+    }
+
+    private static void AddMember(MemoryPackClass memoryPackClass, MemoryPackMember member, bool isPublic,
         HashSet<TypeDef> discoveredTypes)
     {
-        foreach (var field in typeDef.Fields.AsValueEnumerable()
-                     .Where(f => !f.IsStatic && !f.IsLiteral && !IsCompilerGeneratedBackingField(f)))
-        {
-            var member = CreateMemberFromField(field);
-            if (!ShouldIncludeMember(member, field.IsPublic)) continue;
+        if (!ShouldIncludeMember(member, isPublic)) return;
 
-            memoryPackClass.Members.Add(member);
-            TypeReferenceTracker.TrackReferencedType(member.Type, discoveredTypes);
-        }
+        memoryPackClass.Members.Add(member);
+        TypeReferenceTracker.TrackReferencedType(member.Type, discoveredTypes);
     }
+
+    private static Dictionary<string, PropertyDef> MapBackingFields(TypeDef typeDef)
+    {
+        var map = new Dictionary<string, PropertyDef>(StringComparer.Ordinal);
+
+        foreach (var property in typeDef.Properties)
+        {
+            var accessorMethod = property.GetMethod ?? property.SetMethod;
+            if (accessorMethod == null || accessorMethod.IsStatic) continue;
+            if (IsIndexer(property)) continue;
+
+            map[$"<{property.Name.String}>k__BackingField"] = property;
+        }
+
+        return map;
+    }
+
+    private static bool IsRawLayoutStruct(TypeDef typeDef) =>
+        typeDef is { IsValueType: true, IsEnum: false } && !TypeReferenceTracker.IsMemoryPackable(typeDef);
 
     private static bool IsIndexer(PropertyDef property)
     {
@@ -260,7 +319,8 @@ public static class MemberParser
         {
             IsPublic = accessorMethod?.IsPublic ?? false,
             IsInit = IsInitOnlySetter(property.SetMethod),
-            IsReadOnly = property.SetMethod == null
+            IsReadOnly = property.SetMethod == null,
+            HasSetter = property.SetMethod != null
         };
         AttributeExtractor.ExtractMemberAttributes(property.CustomAttributes, member);
         return member;

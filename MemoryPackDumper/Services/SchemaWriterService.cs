@@ -83,11 +83,17 @@ public static class SchemaWriterService
 
         foreach (var member in memoryPackClass.Members)
         {
-            var index = member.Order ?? nextIndex;
-            nextIndex = index + 1;
-
             var type = SchemaTypeConverter.TypeToString(member.Type);
             var name = SchemaTypeConverter.Identifier(member.Name);
+
+            if (member.IsComputed)
+            {
+                writer.AppendFormat($"{indent}{type} {name} computed;\n");
+                continue;
+            }
+
+            var index = member.Order ?? nextIndex;
+            nextIndex = index + 1;
 
             writer.AppendFormat($"{indent}{index}: {type} {name}{BuildMemberModifiers(member)};\n");
         }

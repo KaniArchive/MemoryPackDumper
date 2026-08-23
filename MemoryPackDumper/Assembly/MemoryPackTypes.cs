@@ -61,6 +61,10 @@ public class MemoryPackMember(string name, TypeSig type, bool isField)
     public bool IsRequired = false;
     public int? Order = null;
     public bool SuppressDefaultInitialization = false;
+
+    public bool IsComputed = false;
+    public bool HasSetter = true;
+    public bool IsSerialized => !IsComputed && !IsIgnored;
 }
 
 public class MemoryPackEnum(string underlyingType, string enumName)

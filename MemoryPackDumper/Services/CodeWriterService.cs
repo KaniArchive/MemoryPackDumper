@@ -99,9 +99,19 @@ public static class CodeWriterService
         var visibility = context.IsInterface ? "" : context.Member.IsPublic ? "public " : "private ";
 
         if (context.Member.IsField)
+        {
             writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name};\n");
-        else
-            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} {{ get; set; }}\n");
+            return;
+        }
+
+        if (context.Member.IsComputed)
+        {
+            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} => default;\n");
+            return;
+        }
+
+        var accessors = context.Member.HasSetter ? "{ get; set; }" : "{ get; }";
+        writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} {accessors}\n");
     }
 
     private static void WriteMethod<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
