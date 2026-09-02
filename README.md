@@ -62,6 +62,7 @@ dotnet build
 - `-sc, --split-class`: Split classes into individual files organized by namespace folders
 - `-s, --schema`: Emit MemoryPack IDL (`.mpk`) instead of C# code
 - `-ah, --allow-hidden`: Include private, protected, and internal members in output
+- `-nr, --no-referenced-types`: Do not emit referenced non-MemoryPackable types
 - `-nl, --namespace-to-look-for`: Specifies the namespace to look for (filters types)
 - `-tl, --type-to-look-for`: Specifies the type to look for (filters types)
 - `-t, --target-dll`: Specifies a specific DLL to process

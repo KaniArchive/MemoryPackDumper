@@ -6,6 +6,16 @@ namespace MemoryPackDumper.Assembly;
 
 public static class TypeHelper
 {
+    public static void RegisterScannedAssembly(ModuleDef module)
+    {
+        var scanned = ParserOptionsContext.Current.ScannedAssemblies;
+
+        scanned.Add(module.Name.String);
+
+        var assemblyName = module.Assembly?.Name.String;
+        if (!string.IsNullOrEmpty(assemblyName)) scanned.Add(assemblyName);
+    }
+
     public static List<TypeDef> GetAllMemoryPackableTypes(ModuleDef module)
     {
         List<TypeDef> ret =
@@ -54,14 +64,7 @@ public static class TypeHelper
         if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object" ||
             typeDef.BaseType.FullName == "System.ValueType" || typeDef.BaseType.FullName == "System.Enum") return "";
 
-        if (typeDef.BaseType is TypeSpec { TypeSig: GenericInstSig genericSig })
-            return TypeStringConverter.TypeToString(genericSig);
-
-        var baseName = typeDef.BaseType.Name.String;
-        if (baseName.Contains('`'))
-            baseName = baseName[..baseName.IndexOf('`')];
-
-        return baseName;
+        return TypeStringConverter.TypeToString(typeDef.BaseType.ToTypeSig());
     }
 
     public static void CollectNamespaces(TypeSig typeSig, HashSet<string> namespaces)

@@ -16,10 +16,13 @@ public static class CodeWriterService
         var baseType = context.Class.BaseClassName == "" ? "" : $" : {context.Class.BaseClassName}";
         var isInterface = context.Class.TypeKeyword == "interface";
 
-        WriteMemoryPackableAttribute(ref writer, context.Class, actualIndent);
+        if (context.Class.IsMemoryPackable)
+        {
+            WriteMemoryPackableAttribute(ref writer, context.Class, actualIndent);
 
-        foreach (var union in context.Class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
-            writer.AppendFormat($"{actualIndent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
+            foreach (var union in context.Class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
+                writer.AppendFormat($"{actualIndent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
+        }
 
         var typeDeclaration = context.Class.TypeKeyword switch
         {
@@ -37,7 +40,8 @@ public static class CodeWriterService
                      new MemberWriteContext(member, actualIndent, isInterface))) WriteMember(ref writer, memberContext);
 
         foreach (var methodContext in context.Class.Methods.Select(method =>
-                     new MethodWriteContext(method, actualIndent, context.Class.ClassName)))
+                     new MethodWriteContext(method, actualIndent, context.Class.ClassName,
+                         context.Class.BaseConstructorArity)))
             WriteMethod(ref writer, methodContext);
 
         foreach (var nestedClass in context.Class.NestedClasses)
@@ -95,9 +99,19 @@ public static class CodeWriterService
         var visibility = context.IsInterface ? "" : context.Member.IsPublic ? "public " : "private ";
 
         if (context.Member.IsField)
+        {
             writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name};\n");
-        else
-            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} {{ get; set; }}\n");
+            return;
+        }
+
+        if (context.Member.IsComputed)
+        {
+            writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} => default;\n");
+            return;
+        }
+
+        var accessors = context.Member.HasSetter ? "{ get; set; }" : "{ get; }";
+        writer.AppendFormat($"{memberIndent}{visibility}{typeStr} {context.Member.Name} {accessors}\n");
     }
 
     private static void WriteMethod<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
@@ -121,14 +135,24 @@ public static class CodeWriterService
             var constructorName = context.ClassName.Contains('<')
                 ? context.ClassName[..context.ClassName.IndexOf('<')]
                 : context.ClassName;
-            writer.AppendFormat($"{memberIndent}{visibility}{constructorName}({parameters}) {{ }}\n");
+            var baseCall = BuildBaseConstructorCall(context.BaseConstructorArity);
+            writer.AppendFormat($"{memberIndent}{visibility}{constructorName}({parameters}){baseCall} {{ }}\n");
         }
         else
         {
-            var returnType = context.Method.ReturnType == "Void" ? "void" : context.Method.ReturnType;
+            var returnType = context.Method.ReturnType is "Void" or "void" ? "void" : context.Method.ReturnType;
+            var body = returnType == "void" ? "{ }" : "=> default;";
             writer.AppendFormat(
-                $"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {context.Method.Name}({parameters}) => default;\n");
+                $"{memberIndent}{overrideModifier}{visibility}{staticModifier}{returnType} {context.Method.Name}({parameters}) {body}\n");
         }
+    }
+
+    private static string BuildBaseConstructorCall(int arity)
+    {
+        if (arity <= 0) return "";
+
+        var args = string.Join(", ", Enumerable.Repeat("default", arity));
+        return $" : base({args})";
     }
 
     private static void WriteMemoryPackableAttribute<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,

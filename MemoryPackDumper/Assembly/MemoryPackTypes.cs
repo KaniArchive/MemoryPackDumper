@@ -18,7 +18,11 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public readonly string TypeKeyword = typeKeyword;
     public readonly List<MemoryPackUnion> Unions = [];
     public ITypeDefOrRef? BaseTypeReference = null;
+    public string BaseTypeFullName = "";
+    public string FullName = "";
+    public int BaseConstructorArity = 0;
     public string? GenerateType = null;
+    public bool IsMemoryPackable = true;
     public bool IsRecord = false;
     public readonly List<MemoryPackClass> NestedClasses = [];
     public string OriginalNamespace = "";
@@ -57,6 +61,10 @@ public class MemoryPackMember(string name, TypeSig type, bool isField)
     public bool IsRequired = false;
     public int? Order = null;
     public bool SuppressDefaultInitialization = false;
+
+    public bool IsComputed = false;
+    public bool HasSetter = true;
+    public bool IsSerialized => !IsComputed && !IsIgnored;
 }
 
 public class MemoryPackEnum(string underlyingType, string enumName)

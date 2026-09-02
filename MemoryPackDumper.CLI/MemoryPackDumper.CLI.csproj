@@ -3,10 +3,6 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <OutputExeName>MemoryPackDumper</OutputExeName>
-        <TargetFramework>net10.0</TargetFramework>
-        <LangVersion>latest</LangVersion>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <PublishAot>true</PublishAot>
 
         <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
