@@ -9,4 +9,8 @@
         <Description>A tool to recover MemoryPack definitions from game assemblies</Description>
         <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 </Project>
