@@ -111,7 +111,7 @@ public static class SchemaWriterService
         foreach (var formatter in member.CustomFormatters)
             modifiers.Add($"@formatter(\"{formatter}\")");
 
-        return modifiers.Count == 0 ? "" : $" {string.Join(' ', modifiers)}";
+        return modifiers.Count == 0 ? "" : $" {string.Join(" ", modifiers)}";
     }
 
     private static void WriteConstructors<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
