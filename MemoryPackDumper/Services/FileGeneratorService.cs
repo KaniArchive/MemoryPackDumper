@@ -9,7 +9,10 @@ public static class FileGeneratorService
 {
     public const string CSharpExtension = ".cs";
 
-    public static void WriteSingleFile(MemoryPackSchema schema, CodeGenerationContext context)
+    public static void WriteSingleFile(MemoryPackSchema schema, CodeGenerationContext context) =>
+        File.WriteAllBytes(context.OutputPath, BuildSingleFile(schema, context));
+
+    public static byte[] BuildSingleFile(MemoryPackSchema schema, CodeGenerationContext context)
     {
         using var buffer = Utf8String.CreateWriter(out var stringWriter);
 
@@ -47,7 +50,7 @@ public static class FileGeneratorService
         }
 
         stringWriter.Flush();
-        File.WriteAllBytes(context.OutputPath, buffer.ToArray());
+        return buffer.ToArray();
     }
 
     public static void WriteSplitFiles(MemoryPackSchema schema, CodeGenerationContext context)
