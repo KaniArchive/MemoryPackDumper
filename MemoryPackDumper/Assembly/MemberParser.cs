@@ -139,12 +139,26 @@ public static class MemberParser
             var accessorMethod = property.GetMethod ?? property.SetMethod;
             if (accessorMethod == null || accessorMethod.IsStatic) continue;
             if (IsIndexer(property)) continue;
+            if (IsOverrideProperty(property)) continue;
 
             var member = CreateMemberFromProperty(property);
-            member.IsComputed = true;
+            member.IsComputed = !IsSerializedAccessorProperty(typeDef, property);
+            if (!member.IsComputed)
+                member.HasSetter = true;
             AddMember(memoryPackClass, member, accessorMethod.IsPublic, discoveredTypes);
         }
     }
+
+    private static bool IsSerializedAccessorProperty(TypeDef typeDef, PropertyDef property) =>
+        (typeDef.FullName, property.Name.String) switch
+        {
+            ("MX.GameData.DAO.Battle.NewSkillActionDAO", "Duration") => true,
+            ("AutoUseRuleDAO", "IsValid") => true,
+            _ => false
+        };
+
+    private static bool IsOverrideProperty(PropertyDef property) =>
+        (property.GetMethod ?? property.SetMethod) is { IsVirtual: true, IsNewSlot: false };
 
     private static void AddMember(MemoryPackClass memoryPackClass, MemoryPackMember member, bool isPublic,
         HashSet<TypeDef> discoveredTypes)
