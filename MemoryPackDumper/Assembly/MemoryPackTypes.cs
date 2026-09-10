@@ -25,6 +25,7 @@ public class MemoryPackClass(string className, string baseClassName, string type
     public bool IsMemoryPackable = true;
     public bool IsRecord = false;
     public readonly List<MemoryPackClass> NestedClasses = [];
+    public readonly List<MemoryPackEnum> NestedEnums = [];
     public string OriginalNamespace = "";
     public string? SerializeLayout = null;
 }

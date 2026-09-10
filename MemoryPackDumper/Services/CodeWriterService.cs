@@ -44,6 +44,12 @@ public static class CodeWriterService
                          context.Class.BaseConstructorArity)))
             WriteMethod(ref writer, methodContext);
 
+        foreach (var nestedEnum in context.Class.NestedEnums)
+        {
+            writer.AppendLine();
+            WriteEnum(ref writer, new EnumWriteContext(nestedEnum, actualIndent + "    "));
+        }
+
         foreach (var nestedClass in context.Class.NestedClasses)
         {
             writer.AppendLine();
