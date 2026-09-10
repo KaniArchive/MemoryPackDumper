@@ -6,6 +6,7 @@ public static class Args
     ///     MemoryPack Dumper
     /// </summary>
     /// <param name="dummyDll">-d, Specifies the dummy DLL directory.</param>
+    /// <param name="gameAssembly">-a, Specifies the path to libil2cpp.so (ARM) or GameAssembly.dll (x86/x64). Leave empty to skip assembly analysis.</param>
     /// <param name="outputFile">-o, Specifies the output file or directory (when using --split-class).</param>
     /// <param name="namespace">-n, Specifies the C# namespace for generated classes</param>
     /// <param name="namespaceToLookFor">-nl, Specifies the namespace to look for</param>
@@ -19,6 +20,7 @@ public static class Args
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(
         string dummyDll,
+        string gameAssembly = "",
         string? outputFile = null,
         string @namespace = "MemoryPackData",
         string? namespaceToLookFor = null,
@@ -30,6 +32,6 @@ public static class Args
         bool noReferencedTypes = false,
         bool verbose = false,
         bool suppressWarnings = false) =>
-        Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
+        Parser.Execute(dummyDll, gameAssembly, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
             schema, allowHidden, noReferencedTypes, verbose, suppressWarnings);
 }

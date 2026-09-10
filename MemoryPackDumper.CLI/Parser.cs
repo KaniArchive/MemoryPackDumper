@@ -12,7 +12,7 @@ public static class Parser
     private const string DefaultCodeOutput = "MemoryPack.cs";
     private const string DefaultSchemaOutput = "MemoryPack.mpk";
 
-    public static void Execute(string dummyDll, string? outputFile, string nameSpace,
+    public static void Execute(string dummyDll, string gameAssembly, string? outputFile, string nameSpace,
         string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool schema,
         bool allowHidden, bool noReferencedTypes, bool verbose, bool suppressWarnings)
     {
@@ -33,6 +33,14 @@ public static class Parser
         {
             Log.Global.LogDummyDirNotFound(dummyDll);
             Log.Error("Please provide a valid path using -dummydll or -d.");
+            Log.Shutdown();
+            Environment.Exit(1);
+        }
+
+        if (!string.IsNullOrEmpty(gameAssembly) && !File.Exists(gameAssembly))
+        {
+            Log.Error($"Game assembly not found: {gameAssembly}");
+            Log.Error("Please provide a valid path using -gameassembly or -a.");
             Log.Shutdown();
             Environment.Exit(1);
         }
@@ -127,6 +135,10 @@ public static class Parser
             memoryPackSchema.Enums.Add(fEnum);
 
         SchemaLinker.ResolveBaseConstructors(memoryPackSchema);
+
+        if (!string.IsNullOrEmpty(gameAssembly))
+            foreach (var module in modules)
+                SerializationLayout.Apply(memoryPackSchema, module, gameAssembly);
 
         var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
         var format = schema ? "MemoryPack IDL" : "C#";
