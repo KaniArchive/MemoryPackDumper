@@ -19,12 +19,24 @@ internal sealed class X86Analyzer : IInstructionAnalyzer
                 instruction.Op1Kind == OpKind.Register && registers.Contains(Canonical(instruction.Op1Register)))
                 registers.Add(Canonical(instruction.Op0Register));
 
+            if (IsDereference(instruction) && registers.Contains(Canonical(instruction.MemoryBase)))
+                registers.Add(Canonical(instruction.Op0Register));
+
             if (instruction.MemoryBase != Register.None && registers.Contains(Canonical(instruction.MemoryBase)))
                 accesses.Add(new InstructionAccess(instruction.MemoryDisplacement32, instruction.Mnemonic == Mnemonic.Cmp));
         }
 
         return accesses;
     }
+
+    private static bool IsDereference(Instruction instruction) =>
+        instruction.Mnemonic == Mnemonic.Mov &&
+        instruction.Op0Kind == OpKind.Register &&
+        instruction.Op0Register.IsGPR() &&
+        instruction.Op1Kind == OpKind.Memory &&
+        instruction.MemoryBase != Register.None &&
+        instruction.MemoryIndex == Register.None &&
+        instruction.MemoryDisplacement32 == 0;
 
     private static Register Canonical(Register register) => register.GetFullRegister();
 }

@@ -17,6 +17,10 @@ internal sealed class Arm64Analyzer : IInstructionAnalyzer
             if (TryReadMove(text, out var destination, out var source) && registers.Contains(source))
                 registers.Add(destination);
 
+            if (TryReadLoad(text, out var loaded, out var loadedFrom, out var loadedOffset) &&
+                loadedOffset == 0 && registers.Contains(loadedFrom))
+                registers.Add(loaded);
+
             if (!TryReadMemoryAccess(text, out var register, out var offset) || !registers.Contains(register)) continue;
             accesses.Add(new InstructionAccess(offset,
                 instruction.Mnemonic.ToString().Equals("cmp", StringComparison.OrdinalIgnoreCase)));
@@ -63,4 +67,21 @@ internal sealed class Arm64Analyzer : IInstructionAnalyzer
 
     private static bool IsXRegister(string value) =>
         value.Length > 1 && value[0] == 'x' && int.TryParse(value[1..], out _);
+
+    private static bool TryReadLoad(string instruction, out string destination, out string source, out long offset)
+    {
+        destination = string.Empty;
+        source = string.Empty;
+        offset = 0;
+
+        if (!instruction.StartsWith("ldr ", StringComparison.OrdinalIgnoreCase)) return false;
+
+        var comma = instruction.IndexOf(',');
+        if (comma < 0) return false;
+
+        destination = instruction.Substring(4, comma - 4).Trim();
+        if (!IsXRegister(destination)) return false;
+
+        return TryReadMemoryAccess(instruction[comma..], out source, out offset);
+    }
 }

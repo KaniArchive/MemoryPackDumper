@@ -5,7 +5,8 @@ namespace MemoryPackDumper.Context;
 public readonly record struct MemberWriteContext(
     MemoryPackMember Member,
     string Indent,
-    bool IsInterface = false
+    bool IsInterface = false,
+    bool EmitOrder = false
 )
 {
     public string MemberIndent => Indent + "    ";

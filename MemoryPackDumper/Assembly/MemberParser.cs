@@ -96,7 +96,7 @@ public static class MemberParser
         var emittedProperties = new HashSet<string>(StringComparer.Ordinal);
         var preserveLayout = IsRawLayoutStruct(typeDef);
 
-        foreach (var field in OrderedFields(typeDef))
+        foreach (var field in OrderedFields(typeDef, preserveLayout))
         {
             if (backingFields.TryGetValue(field.Name.String, out var property))
             {
@@ -115,13 +115,13 @@ public static class MemberParser
         ProcessComputedProperties(typeDef, memoryPackClass, emittedProperties, discoveredTypes);
     }
 
-    private static IEnumerable<FieldDef> OrderedFields(TypeDef typeDef)
+    private static IEnumerable<FieldDef> OrderedFields(TypeDef typeDef, bool preserveLayout)
     {
         var fields = typeDef.Fields.AsValueEnumerable()
             .Where(field => !field.IsStatic && !field.IsLiteral)
             .ToList();
 
-        if (fields.Count > 1 && fields.All(field => field.HasLayoutInfo))
+        if (preserveLayout && fields.Count > 1 && fields.All(field => field.HasLayoutInfo))
             fields.Sort((left, right) => left.FieldOffset!.Value.CompareTo(right.FieldOffset!.Value));
 
         return fields;
