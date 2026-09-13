@@ -29,6 +29,51 @@ public static class Parser
 
         if (verbose) Log.EnableDebugLogging();
 
+        var fromSchema = File.Exists(dummyDll) &&
+                         Path.GetExtension(dummyDll).Equals(".mpk", StringComparison.OrdinalIgnoreCase);
+
+        MemoryPackSchema memoryPackSchema;
+
+        if (fromSchema)
+        {
+            Log.Info($"Reading schema from {dummyDll}...");
+            memoryPackSchema = SchemaFileParserService.Read(dummyDll);
+            Log.Success($"Loaded {memoryPackSchema.Classes.Count} classes and {memoryPackSchema.Enums.Count} enums");
+        }
+        else
+        {
+            memoryPackSchema = BuildSchemaFromDlls(dummyDll, gameAssembly, targetDll);
+        }
+
+        var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
+        var format = schema ? "MemoryPack IDL" : "C#";
+
+        switch (schema, splitClass)
+        {
+            case (true, true):
+                Log.Info($"Writing split {format} files to {outputFile}...");
+                SchemaFileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
+                break;
+            case (true, false):
+                Log.Info($"Writing {format} to {outputFile}...");
+                SchemaFileGeneratorService.WriteSingleFile(memoryPackSchema, context);
+                break;
+            case (false, true):
+                Log.Info($"Writing split {format} files to {outputFile}...");
+                FileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
+                break;
+            default:
+                Log.Info($"Writing {format} code to {outputFile}...");
+                FileGeneratorService.WriteSingleFile(memoryPackSchema, context);
+                break;
+        }
+
+        Log.Success("Done!");
+        Log.Shutdown();
+    }
+
+    private static MemoryPackSchema BuildSchemaFromDlls(string dummyDll, string gameAssembly, string? targetDll)
+    {
         if (!Directory.Exists(dummyDll))
         {
             Log.Global.LogDummyDirNotFound(dummyDll);
@@ -140,30 +185,6 @@ public static class Parser
             foreach (var module in modules)
                 SerializationLayout.Apply(memoryPackSchema, module, gameAssembly);
 
-        var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
-        var format = schema ? "MemoryPack IDL" : "C#";
-
-        switch (schema, splitClass)
-        {
-            case (true, true):
-                Log.Info($"Writing split {format} files to {outputFile}...");
-                SchemaFileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
-                break;
-            case (true, false):
-                Log.Info($"Writing {format} to {outputFile}...");
-                SchemaFileGeneratorService.WriteSingleFile(memoryPackSchema, context);
-                break;
-            case (false, true):
-                Log.Info($"Writing split {format} files to {outputFile}...");
-                FileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
-                break;
-            default:
-                Log.Info($"Writing {format} code to {outputFile}...");
-                FileGeneratorService.WriteSingleFile(memoryPackSchema, context);
-                break;
-        }
-
-        Log.Success("Done!");
-        Log.Shutdown();
+        return memoryPackSchema;
     }
 }

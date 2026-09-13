@@ -15,7 +15,8 @@ public static class SchemaWriterService
     {
         ["VersionTolerant"] = "[version_tolerant]",
         ["CircularReference"] = "[circular_ref]",
-        ["Collection"] = "[collection]"
+        ["Collection"] = "[collection]",
+        ["Raw"] = "[raw]"
     }.ToFrozenDictionary();
 
     private static readonly FrozenDictionary<string, string> CallbackKindMap = new Dictionary<string, string>
@@ -48,17 +49,24 @@ public static class SchemaWriterService
         var memberIndent = $"{indent}    ";
         var memoryPackClass = context.Class;
 
-        var baseType = SchemaTypeConverter.StripGenerics(memoryPackClass.BaseClassName);
-        var baseClause = baseType.Length == 0 ? "" : $" : {SchemaTypeConverter.Identifier(baseType)}";
+        var baseClause = FormatBaseClause(memoryPackClass.BaseClassName);
         var modifiers = BuildClassModifiers(memoryPackClass);
+        var keyword = memoryPackClass.TypeKeyword switch
+        {
+            "" => "class",
+            "struct" => "struct",
+            "interface" => "interface",
+            _ => $"{memoryPackClass.TypeKeyword} class"
+        };
 
         writer.AppendFormat(
-            $"{indent}class {SchemaTypeConverter.Identifier(memoryPackClass.ClassName)}{baseClause}{modifiers} {{\n");
+            $"{indent}{keyword} {SchemaTypeConverter.Identifier(memoryPackClass.ClassName)}{baseClause}{modifiers} {{\n");
 
         WriteMembers(ref writer, memoryPackClass, memberIndent);
         WriteConstructors(ref writer, memoryPackClass, memberIndent);
         WriteUnions(ref writer, memoryPackClass, memberIndent);
         WriteCallbacks(ref writer, memoryPackClass, memberIndent);
+        WriteMethods(ref writer, memoryPackClass, memberIndent);
 
         writer.AppendFormat($"{indent}}}\n");
 
@@ -69,11 +77,20 @@ public static class SchemaWriterService
         }
     }
 
+    private static string FormatBaseClause(string baseClassName)
+    {
+        if (baseClassName.Length == 0) return "";
+
+        return baseClassName.Contains('<')
+            ? $" : {baseClassName}"
+            : $" : {SchemaTypeConverter.Identifier(baseClassName)}";
+    }
+
     private static string BuildClassModifiers(MemoryPackClass memoryPackClass) =>
         memoryPackClass.GenerateType != null &&
         ClassModifierMap.TryGetValue(memoryPackClass.GenerateType, out var modifier)
             ? $" {modifier}"
-            : "";
+            : memoryPackClass.IsMemoryPackable ? "" : " [raw]";
 
     private static void WriteMembers<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         MemoryPackClass memoryPackClass, string indent)
@@ -95,7 +112,7 @@ public static class SchemaWriterService
             var index = member.Order ?? nextIndex;
             nextIndex = index + 1;
 
-            writer.AppendFormat($"{indent}{index}: {type} {name}{BuildMemberModifiers(member)};\n");
+            writer.AppendFormat($"{indent}{index}: {type} {name}{BuildMemberModifiers(member)}{(member.IsField ? " field" : " property")};\n");
         }
     }
 
@@ -121,7 +138,7 @@ public static class SchemaWriterService
         foreach (var method in memoryPackClass.Methods.AsValueEnumerable().Where(m => m.IsConstructor))
         {
             var parameters = method.Parameters.AsValueEnumerable()
-                .Select(p => SchemaTypeConverter.Identifier(p.Name)).JoinToString(", ");
+                .Select(p => $"{p.Type} {SchemaTypeConverter.Identifier(p.Name)}").JoinToString(", ");
             var primary = method.Attributes.Contains(PrimaryConstructorAttribute) ? " [primary]" : "";
 
             writer.AppendFormat($"{indent}constructor({parameters}){primary};\n");
@@ -148,4 +165,23 @@ public static class SchemaWriterService
             writer.AppendFormat($"{indent}@callback {kind}({SchemaTypeConverter.Identifier(method.Name)});\n");
         }
     }
+
+    private static void WriteMethods<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
+        MemoryPackClass memoryPackClass, string indent)
+        where TBufferWriter : IBufferWriter<byte>
+    {
+        foreach (var method in memoryPackClass.Methods.AsValueEnumerable()
+                     .Where(m => !m.IsConstructor && !IsCallback(m)))
+        {
+            var parameters = method.Parameters.AsValueEnumerable()
+                .Select(p => $"{p.Type} {SchemaTypeConverter.Identifier(p.Name)}").JoinToString(", ");
+            var staticModifier = method.IsStatic ? "static " : "";
+
+            writer.AppendFormat(
+                $"{indent}@method {method.Visibility} {staticModifier}{method.ReturnType} {SchemaTypeConverter.Identifier(method.Name)}({parameters});\n");
+        }
+    }
+
+    private static bool IsCallback(MemoryPackMethod method) =>
+        method.Attributes.AsValueEnumerable().Any(attribute => CallbackKindMap.ContainsKey(attribute));
 }
