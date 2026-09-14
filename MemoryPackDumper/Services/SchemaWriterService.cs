@@ -90,7 +90,9 @@ public static class SchemaWriterService
         memoryPackClass.GenerateType != null &&
         ClassModifierMap.TryGetValue(memoryPackClass.GenerateType, out var modifier)
             ? $" {modifier}"
-            : memoryPackClass.IsMemoryPackable ? "" : " [raw]";
+            : memoryPackClass.IsMemoryPackable
+                ? ""
+                : " [raw]";
 
     private static void WriteMembers<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         MemoryPackClass memoryPackClass, string indent)
@@ -112,7 +114,8 @@ public static class SchemaWriterService
             var index = member.Order ?? nextIndex;
             nextIndex = index + 1;
 
-            writer.AppendFormat($"{indent}{index}: {type} {name}{BuildMemberModifiers(member)}{(member.IsField ? " field" : " property")};\n");
+            writer.AppendFormat(
+                $"{indent}{index}: {type} {name}{BuildMemberModifiers(member)}{(member.IsField ? " field" : " property")};\n");
         }
     }
 
@@ -135,10 +138,14 @@ public static class SchemaWriterService
         MemoryPackClass memoryPackClass, string indent)
         where TBufferWriter : IBufferWriter<byte>
     {
-        foreach (var method in memoryPackClass.Methods.AsValueEnumerable().Where(m => m.IsConstructor))
+        foreach (var method in memoryPackClass.Methods
+                     .AsValueEnumerable()
+                     .Where(m => m.IsConstructor))
         {
-            var parameters = method.Parameters.AsValueEnumerable()
-                .Select(p => $"{p.Type} {SchemaTypeConverter.Identifier(p.Name)}").JoinToString(", ");
+            var parameters = method.Parameters
+                .AsValueEnumerable()
+                .Select(p => $"{p.Type} {SchemaTypeConverter.Identifier(p.Name)}")
+                .JoinToString(", ");
             var primary = method.Attributes.Contains(PrimaryConstructorAttribute) ? " [primary]" : "";
 
             writer.AppendFormat($"{indent}constructor({parameters}){primary};\n");
@@ -149,7 +156,9 @@ public static class SchemaWriterService
         MemoryPackClass memoryPackClass, string indent)
         where TBufferWriter : IBufferWriter<byte>
     {
-        foreach (var union in memoryPackClass.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
+        foreach (var union in memoryPackClass.Unions
+                     .AsValueEnumerable()
+                     .OrderBy(u => u.Tag))
             writer.AppendFormat($"{indent}union {union.Tag}: {SchemaTypeConverter.Identifier(union.TypeName)};\n");
     }
 
@@ -157,7 +166,10 @@ public static class SchemaWriterService
         MemoryPackClass memoryPackClass, string indent)
         where TBufferWriter : IBufferWriter<byte>
     {
-        foreach (var method in memoryPackClass.Methods.AsValueEnumerable().Where(m => !m.IsConstructor))
+        foreach (var method in memoryPackClass.Methods
+                     .AsValueEnumerable()
+                     .Where(m => !m.IsConstructor))
+
         foreach (var attribute in method.Attributes)
         {
             if (!CallbackKindMap.TryGetValue(attribute, out var kind)) continue;
@@ -170,11 +182,14 @@ public static class SchemaWriterService
         MemoryPackClass memoryPackClass, string indent)
         where TBufferWriter : IBufferWriter<byte>
     {
-        foreach (var method in memoryPackClass.Methods.AsValueEnumerable()
+        foreach (var method in memoryPackClass.Methods
+                     .AsValueEnumerable()
                      .Where(m => !m.IsConstructor && !IsCallback(m)))
         {
-            var parameters = method.Parameters.AsValueEnumerable()
-                .Select(p => $"{p.Type} {SchemaTypeConverter.Identifier(p.Name)}").JoinToString(", ");
+            var parameters = method.Parameters
+                .AsValueEnumerable()
+                .Select(p => $"{p.Type} {SchemaTypeConverter.Identifier(p.Name)}")
+                .JoinToString(", ");
             var staticModifier = method.IsStatic ? "static " : "";
 
             writer.AppendFormat(
@@ -183,5 +198,7 @@ public static class SchemaWriterService
     }
 
     private static bool IsCallback(MemoryPackMethod method) =>
-        method.Attributes.AsValueEnumerable().Any(attribute => CallbackKindMap.ContainsKey(attribute));
+        method.Attributes
+            .AsValueEnumerable()
+            .Any(attribute => CallbackKindMap.ContainsKey(attribute));
 }

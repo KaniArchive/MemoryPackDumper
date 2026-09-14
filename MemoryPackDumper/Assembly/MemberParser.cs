@@ -34,7 +34,7 @@ public static class MemberParser
 
         return memoryPackClass;
     }
-    
+
     private static string GetBaseTypeFullName(TypeDef typeDef)
     {
         if (typeDef.BaseType == null) return "";

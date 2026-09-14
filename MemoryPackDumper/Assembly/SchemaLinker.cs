@@ -31,7 +31,9 @@ public static class SchemaLinker
 
         var arity = int.MaxValue;
 
-        foreach (var ctor in baseClass.Methods.AsValueEnumerable().Where(m => m.IsConstructor))
+        foreach (var ctor in baseClass.Methods
+                     .AsValueEnumerable()
+                     .Where(m => m.IsConstructor))
         {
             if (ctor.Parameters.Count == 0) return 0;
             if (ctor.Parameters.Count < arity) arity = ctor.Parameters.Count;

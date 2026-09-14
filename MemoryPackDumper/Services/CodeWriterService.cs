@@ -20,7 +20,9 @@ public static class CodeWriterService
         {
             WriteMemoryPackableAttribute(ref writer, context.Class, actualIndent);
 
-            foreach (var union in context.Class.Unions.AsValueEnumerable().OrderBy(u => u.Tag))
+            foreach (var union in context.Class.Unions
+                         .AsValueEnumerable()
+                         .OrderBy(u => u.Tag))
                 writer.AppendFormat($"{actualIndent}[MemoryPackUnion({union.Tag}, typeof({union.TypeName}))]\n");
         }
 
@@ -152,7 +154,9 @@ public static class CodeWriterService
         var staticModifier = context.Method.IsStatic ? "static " : "";
         var overrideModifier = context.Method.Name == "GetKeyForItem" ? "override " : "";
 
-        var parameters = context.Method.Parameters.AsValueEnumerable().Select(p => $"{p.Type} {p.Name}")
+        var parameters = context.Method.Parameters
+            .AsValueEnumerable()
+            .Select(p => $"{p.Type} {p.Name}")
             .JoinToString(", ");
 
         if (context.Method.IsConstructor)

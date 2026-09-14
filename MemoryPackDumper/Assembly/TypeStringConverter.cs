@@ -47,7 +47,10 @@ public static class TypeStringConverter
     {
         var baseType = StripArity(QualifiedName(genericInstance.GenericType?.TypeDefOrRef));
 
-        var genericArgs = genericInstance.GenericArguments.AsValueEnumerable().Select(TypeToString).JoinToString(", ");
+        var genericArgs = genericInstance.GenericArguments
+            .AsValueEnumerable()
+            .Select(TypeToString)
+            .JoinToString(", ");
         return $"{baseType}<{genericArgs}>";
     }
 
@@ -56,8 +59,13 @@ public static class TypeStringConverter
 
     private static string QualifiedName(ITypeDefOrRef? typeDefOrRef)
     {
-        if (typeDefOrRef == null) return "";
-        if (typeDefOrRef is TypeSpec typeSpec) return TypeToString(typeSpec.TypeSig);
+        switch (typeDefOrRef)
+        {
+            case null:
+                return "";
+            case TypeSpec typeSpec:
+                return TypeToString(typeSpec.TypeSig);
+        }
 
         var typeDef = typeDefOrRef.ResolveTypeDef();
         if (typeDef == null) return StripArity(typeDefOrRef.Name.String);

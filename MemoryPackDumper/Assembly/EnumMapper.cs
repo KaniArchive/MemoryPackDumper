@@ -2,7 +2,7 @@ namespace MemoryPackDumper.Assembly;
 
 public static class EnumMapper
 {
-    public static string MapGenerateType(string value) =>
+    public static string? MapGenerateType(string? value) =>
         value switch
         {
             "0" => "Object",
@@ -13,7 +13,7 @@ public static class EnumMapper
             _ => value
         };
 
-    public static string MapSerializeLayout(string value) =>
+    public static string? MapSerializeLayout(string? value) =>
         value switch
         {
             "0" => "Sequential",

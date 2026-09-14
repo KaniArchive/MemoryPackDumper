@@ -28,18 +28,21 @@ public static class AttributeExtractor
     private static void ExtractMemoryPackableAttribute(CustomAttribute attr, MemoryPackClass memoryPackClass)
     {
         if (attr.ConstructorArguments.Count > 0 && attr.ConstructorArguments[0].Value != null)
-            memoryPackClass.GenerateType = EnumMapper.MapGenerateType(attr.ConstructorArguments[0].Value.ToString()!);
+            memoryPackClass.GenerateType = EnumMapper.MapGenerateType(attr.ConstructorArguments[0].Value.ToString());
 
         if (attr.ConstructorArguments.Count > 1 && attr.ConstructorArguments[1].Value != null)
         {
-            memoryPackClass.SerializeLayout =
-                EnumMapper.MapSerializeLayout(attr.ConstructorArguments[1].Value.ToString()!);
+            memoryPackClass.SerializeLayout = 
+                EnumMapper.MapSerializeLayout(attr.ConstructorArguments[1].Value.ToString());
         }
         else
         {
-            var layoutProp = attr.NamedArguments.FirstOrDefault(p => p.Name == "SerializeLayout");
+            var layoutProp = attr.NamedArguments
+                .AsValueEnumerable()
+                .FirstOrDefault(p => p.Name == "SerializeLayout");
+            
             if (layoutProp is { Argument.Value: not null })
-                memoryPackClass.SerializeLayout = EnumMapper.MapSerializeLayout(layoutProp.Argument.Value.ToString()!);
+                memoryPackClass.SerializeLayout = EnumMapper.MapSerializeLayout(layoutProp.Argument.Value.ToString());
         }
     }
 

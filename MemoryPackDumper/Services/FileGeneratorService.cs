@@ -42,8 +42,8 @@ public static class FileGeneratorService
             stringWriter.AppendLine();
         }
 
-        foreach (var classContext in schema.Classes.Select(memoryPackClass =>
-                     new ClassWriteContext(memoryPackClass, indent)))
+        foreach (var classContext in schema.Classes
+                     .Select(memoryPackClass => new ClassWriteContext(memoryPackClass, indent)))
         {
             CodeWriterService.WriteClass(ref stringWriter, classContext);
             stringWriter.AppendLine();
@@ -100,7 +100,9 @@ public static class FileGeneratorService
         var namespaces = new HashSet<string> { "MemoryPack" };
         CollectClassNamespaces(memoryPackClass, namespaces, nsContext);
 
-        foreach (var ns in namespaces.AsValueEnumerable().OrderBy(n => n))
+        foreach (var ns in namespaces
+                     .AsValueEnumerable()
+                     .OrderBy(n => n))
             stringWriter.AppendFormat($"using {ns};\n");
         stringWriter.AppendLine();
 

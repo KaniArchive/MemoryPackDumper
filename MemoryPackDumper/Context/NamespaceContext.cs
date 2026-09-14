@@ -2,7 +2,7 @@ namespace MemoryPackDumper.Context;
 
 public readonly record struct NamespaceContext(
     string OriginalNamespace,
-    string FinalNamespace,
+    string? FinalNamespace,
     string? RootPrefix
 )
 {

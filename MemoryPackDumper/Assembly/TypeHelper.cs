@@ -20,25 +20,42 @@ public static class TypeHelper
     {
         List<TypeDef> ret =
         [
-            .. module.GetTypes().AsValueEnumerable().Where(t =>
-                t.CustomAttributes.AsValueEnumerable().Any(a => a.AttributeType.Name == "MemoryPackableAttribute") ||
-                t.Interfaces.AsValueEnumerable().Any(i => i.Interface.Name == "IMemoryPackFormatterRegister")
-            ).ToArray()
+            .. module
+                .GetTypes()
+                .AsValueEnumerable()
+                .Where(t =>
+                    t.CustomAttributes
+                        .AsValueEnumerable()
+                        .Any(a => a.AttributeType.Name == "MemoryPackableAttribute") ||
+                    t.Interfaces
+                        .AsValueEnumerable()
+                        .Any(i => i.Interface.Name == "IMemoryPackFormatterRegister")
+                )
+                .ToArray()
         ];
 
         var opts = ParserOptionsContext.Current;
 
         if (!string.IsNullOrEmpty(opts.NamespaceToLookFor))
-            ret = [.. ret.AsValueEnumerable().Where(t => t.Namespace == opts.NamespaceToLookFor).ToArray()];
+            ret =
+            [
+                .. ret
+                    .AsValueEnumerable()
+                    .Where(t => t.Namespace == opts.NamespaceToLookFor)
+                    .ToArray()
+            ];
 
         if (!string.IsNullOrEmpty(opts.TypeToLookFor))
             ret =
             [
-                .. ret.AsValueEnumerable().Where(t =>
-                    t.Name == opts.TypeToLookFor ||
-                    (t.BaseType != null && t.BaseType.Name == opts.TypeToLookFor) ||
-                    IsSubTypeOf(t, opts.TypeToLookFor)
-                ).ToArray()
+                .. ret
+                    .AsValueEnumerable()
+                    .Where(t =>
+                        t.Name == opts.TypeToLookFor ||
+                        (t.BaseType != null && t.BaseType.Name == opts.TypeToLookFor) ||
+                        IsSubTypeOf(t, opts.TypeToLookFor)
+                    )
+                    .ToArray()
             ];
 
         ret = [..ret.AsValueEnumerable().DistinctBy(t => t.FullName).ToArray()];
@@ -61,8 +78,10 @@ public static class TypeHelper
 
     public static string GetBaseType(TypeDef typeDef)
     {
-        if (typeDef.BaseType == null || typeDef.BaseType.FullName == "System.Object" ||
-            typeDef.BaseType.FullName == "System.ValueType" || typeDef.BaseType.FullName == "System.Enum") return "";
+        if (typeDef.BaseType == null ||
+            typeDef.BaseType.FullName == "System.Object" ||
+            typeDef.BaseType.FullName == "System.ValueType" ||
+            typeDef.BaseType.FullName == "System.Enum") return "";
 
         return TypeStringConverter.TypeToString(typeDef.BaseType.ToTypeSig());
     }
@@ -161,15 +180,17 @@ public static class TypeHelper
     public static void CollectNamespacesForSplitFile(ITypeDefOrRef? typeRef, HashSet<string> namespaces,
         string currentFileNamespace)
     {
-        if (typeRef == null) return;
-
-        if (typeRef is TypeSpec typeSpec)
+        switch (typeRef)
         {
-            CollectNamespacesForSplitFile(typeSpec.TypeSig, namespaces, currentFileNamespace);
-            return;
+            case null:
+                return;
+            case TypeSpec typeSpec:
+                CollectNamespacesForSplitFile(typeSpec.TypeSig, namespaces, currentFileNamespace);
+                return;
+            default:
+                AddNamespaceForSplitFile(typeRef, namespaces, currentFileNamespace);
+                break;
         }
-
-        AddNamespaceForSplitFile(typeRef, namespaces, currentFileNamespace);
     }
 
     private static void AddNamespaceForSplitFile(ITypeDefOrRef? typeRef, HashSet<string> namespaces,
@@ -206,7 +227,7 @@ public static class TypeHelper
         if (nsUtf8 != currentFileNamespace) namespaces.Add(nsUtf8);
     }
 
-    private static bool IsSubTypeOf(TypeDef typeToCheck, string ancestorTypeName)
+    private static bool IsSubTypeOf(TypeDef typeToCheck, string? ancestorTypeName)
     {
         var currentBaseRef = typeToCheck.BaseType;
 

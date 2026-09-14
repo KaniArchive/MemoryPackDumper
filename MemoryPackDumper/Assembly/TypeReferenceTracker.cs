@@ -84,15 +84,15 @@ public static class TypeReferenceTracker
     {
         var current = typeDef;
 
-        while (current.DeclaringType is { } declaring &&
-               current.IsNestedPublic &&
+        while (current is { DeclaringType: { } declaring, IsNestedPublic: true } &&
                (IsMemoryPackable(declaring) || IsEmittableUserType(declaring)))
             current = declaring;
 
         return current;
     }
 
-    public static bool IsMemoryPackable(TypeDef typeDef) => typeDef.CustomAttributes.AsValueEnumerable()
+    public static bool IsMemoryPackable(TypeDef typeDef) => typeDef.CustomAttributes
+        .AsValueEnumerable()
         .Any(a => a.AttributeType.Name == "MemoryPackableAttribute");
 
     private static bool IsEmittableUserType(TypeDef typeDef)
@@ -100,9 +100,7 @@ public static class TypeReferenceTracker
         if (typeDef.IsGlobalModuleType) return false;
         if (!IsScannedType(typeDef)) return false;
         if (IsDelegate(typeDef)) return false;
-        if (IsCompilerGenerated(typeDef)) return false;
-
-        return true;
+        return !IsCompilerGenerated(typeDef);
     }
 
     private static bool IsDelegate(TypeDef typeDef) =>

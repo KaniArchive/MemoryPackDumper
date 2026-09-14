@@ -15,28 +15,28 @@ internal sealed class X86Analyzer : IInstructionAnalyzer
         foreach (var instructionWithAddress in instructions)
         {
             var instruction = instructionWithAddress.X86Instruction;
-            if (instruction.Mnemonic is Mnemonic.Mov or Mnemonic.Lea && instruction.Op0Kind == OpKind.Register &&
-                instruction.Op1Kind == OpKind.Register && registers.Contains(Canonical(instruction.Op1Register)))
+            if (instruction.Mnemonic is Mnemonic.Mov or Mnemonic.Lea &&
+                instruction is { Op0Kind: OpKind.Register, Op1Kind: OpKind.Register } &&
+                registers.Contains(Canonical(instruction.Op1Register)))
                 registers.Add(Canonical(instruction.Op0Register));
 
             if (IsDereference(instruction) && registers.Contains(Canonical(instruction.MemoryBase)))
                 registers.Add(Canonical(instruction.Op0Register));
 
             if (instruction.MemoryBase != Register.None && registers.Contains(Canonical(instruction.MemoryBase)))
-                accesses.Add(new InstructionAccess(instruction.MemoryDisplacement32, instruction.Mnemonic == Mnemonic.Cmp));
+                accesses.Add(new InstructionAccess(instruction.MemoryDisplacement32,
+                    instruction.Mnemonic == Mnemonic.Cmp));
         }
 
         return accesses;
     }
 
     private static bool IsDereference(Instruction instruction) =>
-        instruction.Mnemonic == Mnemonic.Mov &&
-        instruction.Op0Kind == OpKind.Register &&
+        instruction is { Mnemonic: Mnemonic.Mov, Op0Kind: OpKind.Register } &&
         instruction.Op0Register.IsGPR() &&
         instruction.Op1Kind == OpKind.Memory &&
         instruction.MemoryBase != Register.None &&
-        instruction.MemoryIndex == Register.None &&
-        instruction.MemoryDisplacement32 == 0;
+        instruction is { MemoryIndex: Register.None, MemoryDisplacement32: 0 };
 
     private static Register Canonical(Register register) => register.GetFullRegister();
 }

@@ -12,21 +12,21 @@ public static class Log
     private static ILogger? _successLogger;
     private static bool _isInitialized;
 
-    public static ILogger Global
+    public static ILogger? Global
     {
         get
         {
             EnsureInitialized();
-            return _logger!;
+            return _logger;
         }
     }
 
-    public static ILogger GlobalSuccess
+    public static ILogger? GlobalSuccess
     {
         get
         {
             EnsureInitialized();
-            return _successLogger!;
+            return _successLogger;
         }
     }
 
@@ -93,13 +93,13 @@ public static class Log
     public static void Error(string message)
     {
         EnsureInitialized();
-        _logger!.ZLogError($"{message}");
+        _logger?.ZLogError($"{message}");
     }
 
     public static void Error(string message, Exception exception)
     {
         EnsureInitialized();
-        _logger!.ZLogError(exception, $"{message}");
+        _logger?.ZLogError(exception, $"{message}");
     }
 
     public static void Warning(string message)
@@ -107,13 +107,13 @@ public static class Log
         if (ParserOptionsContext.Current.SuppressWarnings) return;
 
         EnsureInitialized();
-        _logger!.ZLogWarning($"{message}");
+        _logger?.ZLogWarning($"{message}");
     }
 
     public static void Debug(string message)
     {
         EnsureInitialized();
-        _logger!.ZLogDebug($"{message}");
+        _logger?.ZLogDebug($"{message}");
     }
 
     public static void EnableDebugLogging()

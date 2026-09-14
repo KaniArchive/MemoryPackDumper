@@ -1,3 +1,4 @@
+using System.Globalization;
 using dnlib.DotNet;
 using MemoryPackDumper.Assembly;
 using ZLinq;
@@ -8,7 +9,8 @@ public static class SchemaFileParserService
 {
     public static MemoryPackSchema Read(string input) => Parse(File.ReadAllLines(input));
 
-    public static MemoryPackSchema Parse(string input) => Parse(input.Split(new[] { "\r\n", "\n" }, StringSplitOptions.None));
+    public static MemoryPackSchema Parse(string input) =>
+        Parse(input.Split(["\r\n", "\n"], StringSplitOptions.None));
 
     private static MemoryPackSchema Parse(string[] lines)
     {
@@ -30,7 +32,6 @@ public static class SchemaFileParserService
     private sealed class SchemaReader(string[] lines)
     {
         private readonly ModuleDef _module = new ModuleDefUser("MemoryPackSchema");
-        private readonly string[] _lines = lines;
         private int _position;
 
         public MemoryPackSchema Read()
@@ -38,14 +39,12 @@ public static class SchemaFileParserService
             var schema = new MemoryPackSchema();
 
             while (TryReadLine(out var line))
-            {
                 if (line.StartsWith("enum ", StringComparison.Ordinal))
                     schema.Enums.Add(ReadEnum(line));
                 else if (TrySplitTypeKeyword(line, out _, out _))
                     schema.Classes.Add(ReadClass(line));
                 else
                     throw Error($"Unexpected declaration '{line}'.");
-            }
 
             SchemaLinker.ResolveBaseConstructors(schema);
             return schema;
@@ -68,7 +67,8 @@ public static class SchemaFileParserService
 
                 var fieldName = member[..equals].Trim();
                 var value = member[(equals + 1)..^1].Trim();
-                memoryPackEnum.Fields.Add(new MemoryPackEnumField(fieldName, long.Parse(value, System.Globalization.CultureInfo.InvariantCulture)));
+                memoryPackEnum.Fields
+                    .Add(new MemoryPackEnumField(fieldName, long.Parse(value, CultureInfo.InvariantCulture)));
             }
 
             throw Error($"Enum '{name}' is missing its closing brace.");
@@ -139,9 +139,9 @@ public static class SchemaFileParserService
                 var content = TrimTerminator(line["union ".Length..]);
                 var separator = content.IndexOf(": ", StringComparison.Ordinal);
                 if (separator < 0) throw Error($"Invalid union '{line}'.");
-                memoryPackClass.Unions.Add(new MemoryPackUnion(
-                    int.Parse(content[..separator], System.Globalization.CultureInfo.InvariantCulture),
-                    content[(separator + 2)..]));
+                memoryPackClass.Unions
+                    .Add(new MemoryPackUnion(int.Parse(content[..separator], CultureInfo.InvariantCulture),
+                        content[(separator + 2)..]));
                 return;
             }
 
@@ -169,7 +169,7 @@ public static class SchemaFileParserService
             if (parts.Length < 2) throw Error($"Invalid method signature '{line}'.");
 
             var visibility = parts[0];
-            var name = parts[parts.Length - 1];
+            var name = parts[^1];
             var isStatic = Array.IndexOf(parts, "static", 1, parts.Length - 2) >= 0;
             var returnTypeStart = isStatic ? 2 : 1;
             var returnType = string.Join(" ", parts, returnTypeStart, parts.Length - returnTypeStart - 1);
@@ -238,7 +238,7 @@ public static class SchemaFileParserService
             var colon = content.IndexOf(": ", StringComparison.Ordinal);
             if (colon < 0) throw Error($"Invalid member '{line}'.");
 
-            var order = int.Parse(content[..colon], System.Globalization.CultureInfo.InvariantCulture);
+            var order = int.Parse(content[..colon], CultureInfo.InvariantCulture);
             var declaration = content[(colon + 2)..];
             var modifiers = ExtractMemberModifiers(ref declaration);
             var separator = declaration.LastIndexOf(' ');
@@ -254,7 +254,9 @@ public static class SchemaFileParserService
                 IsIgnored = modifiers.Contains("ignore")
             };
 
-            foreach (var modifier in modifiers.AsValueEnumerable().Where(value => value.StartsWith("@formatter(\"", StringComparison.Ordinal)))
+            foreach (var modifier in modifiers
+                         .AsValueEnumerable()
+                         .Where(value => value.StartsWith("@formatter(\"", StringComparison.Ordinal)))
                 member.CustomFormatters.Add(modifier["@formatter(\"".Length..^2]);
 
             memoryPackClass.Members.Add(member);
@@ -264,14 +266,18 @@ public static class SchemaFileParserService
         {
             text = text.Trim();
             if (text.EndsWith("?", StringComparison.Ordinal))
-                return new GenericInstSig(new ValueTypeSig(new TypeRefUser(_module, "System", "Nullable`1")), ParseType(text[..^1]));
+                return new GenericInstSig(new ValueTypeSig(new TypeRefUser(_module, "System", "Nullable`1")),
+                    ParseType(text[..^1]));
             if (text == "bytes") return new SZArraySig(_module.CorLibTypes.Byte);
 
             var genericStart = text.IndexOf('<');
             if (genericStart >= 0 && text.EndsWith(">", StringComparison.Ordinal))
             {
                 var name = text[..genericStart];
-                var arguments = SplitArguments(text[(genericStart + 1)..^1]).AsValueEnumerable().Select(ParseType).ToArray();
+                var arguments = SplitArguments(text[(genericStart + 1)..^1])
+                    .AsValueEnumerable()
+                    .Select(ParseType)
+                    .ToArray();
                 var typeRef = new TypeRefUser(_module, GenericNamespace(name), name + "`" + arguments.Length);
                 return new GenericInstSig(new ClassSig(typeRef), arguments);
             }
@@ -292,16 +298,17 @@ public static class SchemaFileParserService
                 "string" => _module.CorLibTypes.String,
                 "datetime" => new ValueTypeSig(new TypeRefUser(_module, "System", "DateTime")),
                 "guid" => new ValueTypeSig(new TypeRefUser(_module, "System", "Guid")),
-                "Vector2" or "Vector3" or "Vector4" or "Quaternion" or "Matrix4x4" => new ValueTypeSig(new TypeRefUser(_module, "UnityEngine", text)),
+                "Vector2" or "Vector3" or "Vector4" or "Quaternion" or "Matrix4x4" => new ValueTypeSig(
+                    new TypeRefUser(_module, "UnityEngine", text)),
                 _ => new ClassSig(new TypeRefUser(_module, "", text))
             };
         }
 
         private bool TryReadLine(out string line)
         {
-            while (_position < _lines.Length)
+            while (_position < lines.Length)
             {
-                line = _lines[_position++].Trim();
+                line = lines[_position++].Trim();
                 if (line.Length > 0) return true;
             }
 
@@ -311,17 +318,13 @@ public static class SchemaFileParserService
 
         private InvalidDataException Error(string message) => new($"{message} Line {_position}.");
 
-        private static string TrimBlockStart(string line, string keyword)
-        {
-            if (!line.EndsWith('{')) throw new InvalidDataException($"Invalid {keyword} declaration '{line}'.");
-            return line[..^1].Trim();
-        }
+        private static string TrimBlockStart(string line, string keyword) => !line.EndsWith('{')
+            ? throw new InvalidDataException($"Invalid {keyword} declaration '{line}'.")
+            : line[..^1].Trim();
 
-        private static string TrimTerminator(string line)
-        {
-            if (!line.EndsWith(';')) throw new InvalidDataException($"Missing terminator in '{line}'.");
-            return line[..^1].Trim();
-        }
+        private static string TrimTerminator(string line) => !line.EndsWith(';')
+            ? throw new InvalidDataException($"Missing terminator in '{line}'.")
+            : line[..^1].Trim();
 
         private static List<string> ExtractModifiers(ref string content)
         {
@@ -360,7 +363,6 @@ public static class SchemaFileParserService
             var start = 0;
             var depth = 0;
             for (var index = 0; index < text.Length; index++)
-            {
                 switch (text[index])
                 {
                     case '<': depth++; break;
@@ -370,7 +372,6 @@ public static class SchemaFileParserService
                         start = index + 1;
                         break;
                 }
-            }
 
             values.Add(text[start..].Trim());
             return values;

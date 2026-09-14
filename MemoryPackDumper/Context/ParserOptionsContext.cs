@@ -12,5 +12,5 @@ public sealed class ParserOptionsContext
     public string? NamespaceToLookFor { get; init; }
     public string? TypeToLookFor { get; init; }
     public List<TypeDef> DiscoveredEnums { get; } = [];
-    public HashSet<string> ScannedAssemblies { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public HashSet<string?> ScannedAssemblies { get; } = new(StringComparer.OrdinalIgnoreCase);
 }

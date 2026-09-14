@@ -23,7 +23,9 @@ internal sealed class Arm64Analyzer : IInstructionAnalyzer
 
             if (!TryReadMemoryAccess(text, out var register, out var offset) || !registers.Contains(register)) continue;
             accesses.Add(new InstructionAccess(offset,
-                instruction.Mnemonic.ToString().Equals("cmp", StringComparison.OrdinalIgnoreCase)));
+                instruction.Mnemonic
+                    .ToString()
+                    .Equals("cmp", StringComparison.OrdinalIgnoreCase)));
         }
 
         return accesses;
@@ -38,7 +40,7 @@ internal sealed class Arm64Analyzer : IInstructionAnalyzer
         var comma = instruction.IndexOf(',');
         if (comma < 0) return false;
 
-        destination = instruction.Substring(4, comma - 4).Trim();
+        destination = instruction[4..comma].Trim();
         source = instruction[(comma + 1)..].Trim();
         return IsXRegister(destination) && IsXRegister(source);
     }
@@ -51,7 +53,8 @@ internal sealed class Arm64Analyzer : IInstructionAnalyzer
         var close = instruction.IndexOf(']', open + 1);
         if (open < 0 || close < 0) return false;
 
-        var operands = instruction.Substring(open + 1, close - open - 1)
+        var operands = instruction
+            .Substring(open + 1, close - open - 1)
             .Split([','], StringSplitOptions.RemoveEmptyEntries);
         if (operands.Length == 0) return false;
 
@@ -79,9 +82,7 @@ internal sealed class Arm64Analyzer : IInstructionAnalyzer
         var comma = instruction.IndexOf(',');
         if (comma < 0) return false;
 
-        destination = instruction.Substring(4, comma - 4).Trim();
-        if (!IsXRegister(destination)) return false;
-
-        return TryReadMemoryAccess(instruction[comma..], out source, out offset);
+        destination = instruction[4..comma].Trim();
+        return IsXRegister(destination) && TryReadMemoryAccess(instruction[comma..], out source, out offset);
     }
 }

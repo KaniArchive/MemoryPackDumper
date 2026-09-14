@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
 using dnlib.DotNet;
 using MemoryPackDumper.Helpers;
 using MemoryPackDumper.Instructions;
@@ -20,20 +17,24 @@ public static class SerializationLayout
         var analyzer = InstructionsAnalyzer.GetAnalyzer(parser.Architecture);
 
         var declarations = new Dictionary<string, MemoryPackClass>(StringComparer.Ordinal);
-        foreach (var declaration in schema.Classes.AsValueEnumerable()
+
+        foreach (var declaration in schema.Classes
+                     .AsValueEnumerable()
                      .Where(declaration => !string.IsNullOrEmpty(declaration.FullName)))
             declarations[declaration.FullName] = declaration;
 
         var layouts = new Dictionary<string, List<string>>(StringComparer.Ordinal);
 
-        foreach (var type in module.GetTypes().AsValueEnumerable()
+        foreach (var type in module.GetTypes()
+                     .AsValueEnumerable()
                      .Where(type => declarations.ContainsKey(type.FullName)))
         {
             if (!TryRead(parser, analyzer, type, declarations, out var members)) continue;
 
-            foreach (var group in Group(members))
-                if (!layouts.ContainsKey(group.Key))
-                    layouts[group.Key] = group.Value;
+            foreach (var group in Group(members)
+                         .AsValueEnumerable()
+                         .Where(group => !layouts.ContainsKey(group.Key)))
+                layouts[group.Key] = group.Value;
         }
 
         foreach (var layout in layouts)
@@ -61,14 +62,21 @@ public static class SerializationLayout
 
     private static void Reorder(MemoryPackClass declaration, List<string> members)
     {
-        var declared = declaration.Members.AsValueEnumerable()
+        var declared = declaration.Members
+            .AsValueEnumerable()
             .ToDictionary(member => member.Name, StringComparer.Ordinal);
 
         if (members.AsValueEnumerable().Any(name => !declared.ContainsKey(name))) return;
 
         var serialized = new HashSet<string>(members, StringComparer.Ordinal);
-        var computed = members.AsValueEnumerable().Where(name => !declared[name].IsField).ToList();
-        var fields = members.AsValueEnumerable().Where(name => declared[name].IsField).ToList();
+        var computed = members
+            .AsValueEnumerable()
+            .Where(name => !declared[name].IsField)
+            .ToList();
+        var fields = members
+            .AsValueEnumerable()
+            .Where(name => declared[name].IsField)
+            .ToList();
 
         var orderedNames = new List<string>();
         if (computed.Count > 0) orderedNames.Add(computed[0]);
@@ -76,7 +84,10 @@ public static class SerializationLayout
         for (var index = 1; index < computed.Count; index++)
             orderedNames.Add(computed[index]);
 
-        var ordered = orderedNames.AsValueEnumerable().Select(name => declared[name]).ToList();
+        var ordered = orderedNames
+            .AsValueEnumerable()
+            .Select(name => declared[name])
+            .ToList();
 
         foreach (var member in ordered)
         {
@@ -84,14 +95,16 @@ public static class SerializationLayout
             if (!member.IsField) member.HasSetter = true;
         }
 
-        foreach (var member in declaration.Members.AsValueEnumerable()
+        foreach (var member in declaration.Members
+                     .AsValueEnumerable()
                      .Where(member => !serialized.Contains(member.Name)))
             member.IsComputed = true;
 
         declaration.Members.Clear();
         declaration.Members.AddRange(ordered);
 
-        foreach (var member in declared.Values.AsValueEnumerable()
+        foreach (var member in declared.Values
+                     .AsValueEnumerable()
                      .Where(member => !serialized.Contains(member.Name)))
             declaration.Members.Add(member);
     }
@@ -122,7 +135,8 @@ public static class SerializationLayout
                 seen.Add(property.Owner + "." + property.Name))
                 properties.Add(property);
 
-        var fields = fieldOffsets.AsValueEnumerable()
+        var fields = fieldOffsets
+            .AsValueEnumerable()
             .OrderBy(entry => entry.Key)
             .Select(entry => entry.Value)
             .ToList();
@@ -141,11 +155,17 @@ public static class SerializationLayout
 
     private static MethodDef? SerializeMethod(TypeDef type)
     {
-        var formatter = type.NestedTypes.AsValueEnumerable().FirstOrDefault(nested =>
-            nested.BaseType?.Name.String.StartsWith("MemoryPackFormatter", StringComparison.Ordinal) == true);
+        var formatter = type.NestedTypes
+            .AsValueEnumerable()
+            .FirstOrDefault(nested =>
+                nested.BaseType?.Name.String.StartsWith("MemoryPackFormatter", StringComparison.Ordinal) == true);
 
-        return type.Methods.AsValueEnumerable().FirstOrDefault(candidate => candidate.Name.String == "Serialize") ??
-               formatter?.Methods.AsValueEnumerable().FirstOrDefault(candidate => candidate.Name.String == "Serialize");
+        return type.Methods
+                   .AsValueEnumerable()
+                   .FirstOrDefault(candidate => candidate.Name.String == "Serialize") ??
+               formatter?.Methods
+                   .AsValueEnumerable()
+                   .FirstOrDefault(candidate => candidate.Name.String == "Serialize");
     }
 
     private static IEnumerable<(TypeDef Type, MemoryPackClass Declaration)> Chain(TypeDef type,
@@ -163,10 +183,14 @@ public static class SerializationLayout
 
         foreach (var (owner, declaration) in Chain(type, declarations))
         {
-            var names = new HashSet<string>(declaration.Members.AsValueEnumerable()
-                .Where(member => !member.IsField).Select(member => member.Name).ToArray(), StringComparer.Ordinal);
+            var names = new HashSet<string>(declaration.Members
+                .AsValueEnumerable()
+                .Where(member => !member.IsField)
+                .Select(member => member.Name)
+                .ToArray(), StringComparer.Ordinal);
 
-            foreach (var property in owner.Properties.AsValueEnumerable()
+            foreach (var property in owner.Properties
+                         .AsValueEnumerable()
                          .Where(property => names.Contains(property.Name.String)))
             {
                 if (property.GetMethod is not { } getter) continue;
@@ -188,10 +212,14 @@ public static class SerializationLayout
 
         foreach (var (owner, declaration) in Chain(type, declarations))
         {
-            var names = new HashSet<string>(declaration.Members.AsValueEnumerable()
-                .Where(member => member.IsField).Select(member => member.Name).ToArray(), StringComparer.Ordinal);
+            var names = new HashSet<string>(declaration.Members
+                .AsValueEnumerable()
+                .Where(member => member.IsField)
+                .Select(member => member.Name)
+                .ToArray(), StringComparer.Ordinal);
 
-            foreach (var field in owner.Fields.AsValueEnumerable()
+            foreach (var field in owner.Fields
+                         .AsValueEnumerable()
                          .Where(field => names.Contains(field.Name.String)))
             {
                 var offset = FieldOffset(field);
@@ -206,10 +234,13 @@ public static class SerializationLayout
 
     private static long FieldOffset(FieldDef field)
     {
-        var attribute = field.CustomAttributes.AsValueEnumerable().FirstOrDefault(candidate =>
-            candidate.AttributeType.Name.String == "FieldOffsetAttribute");
-        var value = attribute?.Fields.AsValueEnumerable()
-            .FirstOrDefault(candidate => candidate.Name.String == "Offset")?.Argument.Value?.ToString();
+        var attribute = field.CustomAttributes
+            .AsValueEnumerable()
+            .FirstOrDefault(candidate => candidate.AttributeType.Name.String == "FieldOffsetAttribute");
+        var value = attribute?.Fields
+            .AsValueEnumerable()
+            .FirstOrDefault(candidate => candidate.Name.String == "Offset")?.Argument.Value?
+            .ToString();
 
         return value == null ? -1 : Convert.ToInt64(value[2..], 16);
     }

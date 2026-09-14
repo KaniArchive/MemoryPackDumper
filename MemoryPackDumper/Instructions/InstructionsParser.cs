@@ -5,7 +5,7 @@ using ZLinq;
 
 namespace MemoryPackDumper.Instructions;
 
-internal sealed class InstructionsParser
+internal sealed class InstructionsParser(string gameAssemblyPath)
 {
     private const ushort DosHeaderMz = 0x5A4D;
     private const uint ElfMagic = 0x464C457F;
@@ -13,22 +13,14 @@ internal sealed class InstructionsParser
     private const ushort ImageFileMachineArm64 = 0xAA64;
     private const ushort ImageFileMachineArmnt = 0x01C4;
     private const ushort EmX86 = 0x003E;
-    private readonly byte[] _fileBytes;
+    private readonly byte[] _fileBytes = File.ReadAllBytes(gameAssemblyPath);
 
-    public InstructionsParser(string gameAssemblyPath)
-    {
-        _fileBytes = File.ReadAllBytes(gameAssemblyPath);
-        Architecture = DetectArchitecture(gameAssemblyPath);
-    }
+    public Architecture Architecture { get; } = DetectArchitecture(gameAssemblyPath);
 
-    public Architecture Architecture { get; }
-
-    public List<InstructionWithAddress> GetInstructions(MethodDef method)
-    {
-        return Architecture == Architecture.Arm64
+    public List<InstructionWithAddress> GetInstructions(MethodDef method) =>
+        Architecture == Architecture.Arm64
             ? GetArmInstructions(method)
             : GetX86Instructions(method);
-    }
 
     private static Architecture DetectArchitecture(string gameAssemblyPath)
     {
@@ -121,10 +113,13 @@ internal sealed class InstructionsParser
 
     private static long GetMethodAddress(MethodDef method, string name)
     {
-        var attribute = method.CustomAttributes.AsValueEnumerable().FirstOrDefault(candidate =>
-            candidate.AttributeType.Name.String == "AddressAttribute");
-        var value = attribute?.Fields.AsValueEnumerable().FirstOrDefault(candidate => candidate.Name.String == name)
-            ?.Argument.Value?.ToString();
+        var attribute = method.CustomAttributes
+            .AsValueEnumerable()
+            .FirstOrDefault(candidate => candidate.AttributeType.Name.String == "AddressAttribute");
+        var value = attribute?.Fields
+            .AsValueEnumerable()
+            .FirstOrDefault(candidate => candidate.Name.String == name)?.Argument.Value?
+            .ToString();
 
         return value == null ? 0 : Convert.ToInt64(value[2..], 16);
     }
