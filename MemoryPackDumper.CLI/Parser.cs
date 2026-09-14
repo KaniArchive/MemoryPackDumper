@@ -12,7 +12,7 @@ public static class Parser
     private const string DefaultCodeOutput = "MemoryPack.cs";
     private const string DefaultSchemaOutput = "MemoryPack.mpk";
 
-    public static void Execute(string dummyDll, string? outputFile, string nameSpace,
+    public static void Execute(string dummyDll, string gameAssembly, string? outputFile, string nameSpace,
         string? namespaceToLookFor, string? type2LookFor, string? targetDll, bool splitClass, bool schema,
         bool allowHidden, bool noReferencedTypes, bool verbose, bool suppressWarnings)
     {
@@ -29,10 +29,63 @@ public static class Parser
 
         if (verbose) Log.EnableDebugLogging();
 
+        var fromSchema = File.Exists(dummyDll) &&
+                         Path.GetExtension(dummyDll).Equals(".mpk", StringComparison.OrdinalIgnoreCase);
+
+        MemoryPackSchema memoryPackSchema;
+
+        if (fromSchema)
+        {
+            Log.Info($"Reading schema from {dummyDll}...");
+            memoryPackSchema = SchemaFileParserService.Read(dummyDll);
+            Log.Success($"Loaded {memoryPackSchema.Classes.Count} classes and {memoryPackSchema.Enums.Count} enums");
+        }
+        else
+        {
+            memoryPackSchema = BuildSchemaFromDlls(dummyDll, gameAssembly, targetDll);
+        }
+
+        var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
+        var format = schema ? "MemoryPack IDL" : "C#";
+
+        switch (schema, splitClass)
+        {
+            case (true, true):
+                Log.Info($"Writing split {format} files to {outputFile}...");
+                SchemaFileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
+                break;
+            case (true, false):
+                Log.Info($"Writing {format} to {outputFile}...");
+                SchemaFileGeneratorService.WriteSingleFile(memoryPackSchema, context);
+                break;
+            case (false, true):
+                Log.Info($"Writing split {format} files to {outputFile}...");
+                FileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
+                break;
+            default:
+                Log.Info($"Writing {format} code to {outputFile}...");
+                FileGeneratorService.WriteSingleFile(memoryPackSchema, context);
+                break;
+        }
+
+        Log.Success("Done!");
+        Log.Shutdown();
+    }
+
+    private static MemoryPackSchema BuildSchemaFromDlls(string dummyDll, string gameAssembly, string? targetDll)
+    {
         if (!Directory.Exists(dummyDll))
         {
             Log.Global.LogDummyDirNotFound(dummyDll);
             Log.Error("Please provide a valid path using -dummydll or -d.");
+            Log.Shutdown();
+            Environment.Exit(1);
+        }
+
+        if (!string.IsNullOrEmpty(gameAssembly) && !File.Exists(gameAssembly))
+        {
+            Log.Error($"Game assembly not found: {gameAssembly}");
+            Log.Error("Please provide a valid path using -gameassembly or -a.");
             Log.Shutdown();
             Environment.Exit(1);
         }
@@ -128,30 +181,10 @@ public static class Parser
 
         SchemaLinker.ResolveBaseConstructors(memoryPackSchema);
 
-        var context = new CodeGenerationContext(nameSpace, splitClass, outputFile);
-        var format = schema ? "MemoryPack IDL" : "C#";
+        if (!string.IsNullOrEmpty(gameAssembly))
+            foreach (var module in modules)
+                SerializationLayout.Apply(memoryPackSchema, module, gameAssembly);
 
-        switch (schema, splitClass)
-        {
-            case (true, true):
-                Log.Info($"Writing split {format} files to {outputFile}...");
-                SchemaFileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
-                break;
-            case (true, false):
-                Log.Info($"Writing {format} to {outputFile}...");
-                SchemaFileGeneratorService.WriteSingleFile(memoryPackSchema, context);
-                break;
-            case (false, true):
-                Log.Info($"Writing split {format} files to {outputFile}...");
-                FileGeneratorService.WriteSplitFiles(memoryPackSchema, context);
-                break;
-            default:
-                Log.Info($"Writing {format} code to {outputFile}...");
-                FileGeneratorService.WriteSingleFile(memoryPackSchema, context);
-                break;
-        }
-
-        Log.Success("Done!");
-        Log.Shutdown();
+        return memoryPackSchema;
     }
 }

@@ -36,6 +36,9 @@ MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --target-dll "Game.dll" --ou
 
 # Export MemoryPack IDL (.mpk) instead of C#
 MemoryPackDumper.exe --dummy-dll "path/to/dummydll" --schema
+
+# Generate C# from a previously exported .mpk schema
+MemoryPackDumper.exe --dummy-dll "path/to/Game.mpk" --output-file "MemoryPack.cs"
 ```
 
 ## Build
@@ -56,7 +59,7 @@ dotnet build
 
 ## Options
 
-- `-d, --dummy-dll`: Specifies the dummy DLL directory (Required)
+- `-d, --dummy-dll`: Specifies the dummy DLL directory, or a `.mpk` schema file to convert back to C# (Required)
 - `-o, --output-file`: Specifies the output file or directory when using --split-class (Default: MemoryPack.cs, or MemoryPack.mpk with --schema)
 - `-n, --namespace`: Specifies the C# namespace for generated classes (Default: MemoryPackData)
 - `-sc, --split-class`: Split classes into individual files organized by namespace folders

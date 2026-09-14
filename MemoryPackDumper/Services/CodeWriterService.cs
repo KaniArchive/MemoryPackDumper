@@ -36,13 +36,22 @@ public static class CodeWriterService
         writer.AppendLiteral(typeDeclaration);
         writer.AppendFormat($"{actualIndent}{{\n");
 
+        var emitOrder = RequiresExplicitOrder(context.Class);
+
         foreach (var memberContext in context.Class.Members.Select(member =>
-                     new MemberWriteContext(member, actualIndent, isInterface))) WriteMember(ref writer, memberContext);
+                     new MemberWriteContext(member, actualIndent, isInterface, emitOrder)))
+            WriteMember(ref writer, memberContext);
 
         foreach (var methodContext in context.Class.Methods.Select(method =>
                      new MethodWriteContext(method, actualIndent, context.Class.ClassName,
                          context.Class.BaseConstructorArity)))
             WriteMethod(ref writer, methodContext);
+
+        foreach (var nestedEnum in context.Class.NestedEnums)
+        {
+            writer.AppendLine();
+            WriteEnum(ref writer, new EnumWriteContext(nestedEnum, actualIndent + "    "));
+        }
 
         foreach (var nestedClass in context.Class.NestedClasses)
         {
@@ -73,13 +82,29 @@ public static class CodeWriterService
         writer.AppendFormat($"{actualIndent}}}\n");
     }
 
+    private static bool RequiresExplicitOrder(MemoryPackClass memoryPackClass)
+    {
+        if (!EnumMapper.IsDefaultSerializeLayout(memoryPackClass.SerializeLayout)) return true;
+        if (memoryPackClass.GenerateType is "VersionTolerant") return true;
+
+        var expected = 0;
+
+        foreach (var member in memoryPackClass.Members.AsValueEnumerable().Where(member => member.IsSerialized))
+        {
+            if (member.Order.HasValue && member.Order.Value != expected) return true;
+            expected++;
+        }
+
+        return false;
+    }
+
     private static void WriteMember<TBufferWriter>(ref Utf8StringWriter<TBufferWriter> writer,
         MemberWriteContext context)
         where TBufferWriter : IBufferWriter<byte>
     {
         var memberIndent = context.MemberIndent;
 
-        if (context.Member.Order.HasValue)
+        if (context.EmitOrder && context.Member.Order.HasValue)
             writer.AppendFormat($"{memberIndent}[MemoryPackOrder({context.Member.Order.Value})]\n");
 
         if (context.Member.IsInclude)

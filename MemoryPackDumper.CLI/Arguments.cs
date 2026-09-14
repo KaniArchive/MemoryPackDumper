@@ -5,20 +5,22 @@ public static class Args
     /// <summary>
     ///     MemoryPack Dumper
     /// </summary>
-    /// <param name="dummyDll">-d, Specifies the dummy DLL directory.</param>
+    /// <param name="dummyDll">-d, Specifies the dummy DLL directory, or a .mpk schema file to convert back to C#.</param>
+    /// <param name="gameAssembly">-a, Specifies the path to libil2cpp.so (ARM) or GameAssembly.dll (x86/x64). Leave empty to skip assembly analysis.</param>
     /// <param name="outputFile">-o, Specifies the output file or directory (when using --split-class).</param>
     /// <param name="namespace">-n, Specifies the C# namespace for generated classes</param>
     /// <param name="namespaceToLookFor">-nl, Specifies the namespace to look for</param>
     /// <param name="typeToLookFor">-tl, Specifies the type to look for</param>
     /// <param name="targetDll">-t, Specifies a specific DLL to process (if not set, processes all DLLs)</param>
     /// <param name="splitClass">-sc, Split classes into individual files organized by namespace</param>
-    /// <param name="schema">-s, Emit MemoryPack IDL (.mpschema) instead of C# code.</param>
+    /// <param name="schema">-s, Emit MemoryPack IDL (.mpk) instead of C# code.</param>
     /// <param name="allowHidden">-ah, Include private, protected, and internal members in output.</param>
     /// <param name="noReferencedTypes">-nr, Do not emit referenced non-MemoryPackable types.</param>
     /// <param name="verbose">-v, Enable verbose debug logging.</param>
     /// <param name="suppressWarnings">-sw, Suppress warning messages.</param>
     public static void Run(
         string dummyDll,
+        string gameAssembly = "",
         string? outputFile = null,
         string @namespace = "MemoryPackData",
         string? namespaceToLookFor = null,
@@ -30,6 +32,6 @@ public static class Args
         bool noReferencedTypes = false,
         bool verbose = false,
         bool suppressWarnings = false) =>
-        Parser.Execute(dummyDll, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
+        Parser.Execute(dummyDll, gameAssembly, outputFile, @namespace, namespaceToLookFor, typeToLookFor, targetDll, splitClass,
             schema, allowHidden, noReferencedTypes, verbose, suppressWarnings);
 }
